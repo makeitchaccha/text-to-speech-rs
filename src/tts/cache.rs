@@ -2,14 +2,14 @@ use async_trait::async_trait;
 use moka::future::Cache;
 use crate::tts::{Voice, VoiceError};
 
-pub struct CachedVoice<T: Voice> {
+pub struct CachedVoice {
     identifier: String,
-    inner: T,
+    inner: Box<dyn Voice>,
     cache: Cache<String, Vec<u8>>,
 }
 
-impl<T: Voice> CachedVoice<T> {
-    pub fn new(inner: T, capacity: u64) -> Self {
+impl CachedVoice {
+    pub fn new(inner: Box<dyn Voice>, capacity: u64) -> Self {
         Self {
             identifier: format!("cached-{}", inner.identifier()),
             inner,
@@ -19,7 +19,7 @@ impl<T: Voice> CachedVoice<T> {
 }
 
 #[async_trait]
-impl<T: Voice> Voice for CachedVoice<T> {
+impl Voice for CachedVoice {
     fn identifier(&self) -> &str {
         &self.identifier
     }
@@ -70,7 +70,7 @@ mod tests {
         let mock = MockVoice::new();
         let call_count = mock.call_count.clone();
 
-        let cached_voice = CachedVoice::new(mock, 100);
+        let cached_voice = CachedVoice::new(Box::new(mock), 100);
 
         let text = "hello";
 
