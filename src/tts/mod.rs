@@ -10,8 +10,6 @@ const DISCORD_SAMPLE_RATE: i32 = 48_000;
 pub enum VoiceError {
     #[error("API request failed: {0}")]
     Api(anyhow::Error),
-    #[error("Decoding error: {0}")]
-    Decoding(anyhow::Error),
     #[error("Cache error: {0}")]
     Cache(anyhow::Error),
     #[error("Unknown error: {0}")]
