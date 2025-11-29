@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use moka::future::Cache;
-use crate::tts::{Voice, VoiceError};
+use crate::tts::{PcmAudio, Voice, VoiceError};
 
 pub struct CachedVoice<T: Voice> {
     identifier: String,
     inner: T,
-    cache: Cache<String, Vec<u8>>
+    cache: Cache<String, PcmAudio>
 }
 
 impl<T: Voice> CachedVoice<T> {
@@ -24,7 +24,7 @@ impl<T: Voice> Voice for CachedVoice<T> {
         &self.identifier
     }
 
-    async fn generate(&self, text: &str) -> Result<Vec<u8>, VoiceError> {
+    async fn generate(&self, text: &str) -> Result<PcmAudio, VoiceError> {
         if let Some(data) = self.cache.get(text).await {
             return Ok(data)
         }
@@ -39,6 +39,7 @@ impl<T: Voice> Voice for CachedVoice<T> {
 
 #[cfg(test)]
 mod tests {
+    use std::ops::Deref;
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use super::*;
@@ -59,9 +60,9 @@ mod tests {
             "mock"
         }
 
-        async fn generate(&self, text: &str) -> Result<Vec<u8>, VoiceError> {
+        async fn generate(&self, text: &str) -> Result<PcmAudio, VoiceError> {
             self.call_count.fetch_add(1, Ordering::SeqCst);
-            Ok(text.as_bytes().to_vec())
+            Ok(PcmAudio(text.as_bytes().to_vec()))
         }
     }
 
@@ -76,11 +77,11 @@ mod tests {
 
         // in case of same text
         let result = cached_voice.generate(text).await.unwrap();
-        assert_eq!(result, b"hello");
+        assert_eq!(result.to_vec(), b"hello");
         assert_eq!(call_count.load(Ordering::SeqCst), 1, "First call should hit the inner voice");
 
         let result = cached_voice.generate(text).await.unwrap();
-        assert_eq!(result, b"hello");
+        assert_eq!(result.to_vec(), b"hello");
         assert_eq!(call_count.load(Ordering::SeqCst), 1, "Second call should hit the cache");
 
         // different text
