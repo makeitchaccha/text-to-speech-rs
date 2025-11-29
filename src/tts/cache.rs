@@ -39,7 +39,6 @@ impl<T: Voice> Voice for CachedVoice<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::ops::Deref;
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use super::*;

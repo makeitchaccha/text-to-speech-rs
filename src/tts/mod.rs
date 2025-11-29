@@ -2,8 +2,6 @@ mod cache;
 mod google;
 
 use async_trait::async_trait;
-use derive_more::Into;
-use derive_more::with_trait::{Deref, DerefMut, From};
 use thiserror::Error;
 
 const DISCORD_SAMPLE_RATE: i32 = 48_000;
