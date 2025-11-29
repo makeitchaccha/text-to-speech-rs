@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use crate::tts::{EncodedAudio, Source, VoiceError, DISCORD_SAMPLE_RATE};
+use crate::tts::{Voice, VoiceError, DISCORD_SAMPLE_RATE};
 use google_cloud_texttospeech_v1::client::TextToSpeech;
 use google_cloud_texttospeech_v1::model::{AudioConfig, AudioEncoding, SsmlVoiceGender, SynthesisInput, VoiceSelectionParams};
 use serde::Deserialize;
@@ -117,12 +117,12 @@ impl GoogleSource {
 }
 
 #[async_trait]
-impl Source for GoogleSource {
+impl Voice for GoogleSource {
     fn identifier(&self) -> &str {
         self.identifier.as_str()
     }
 
-    async fn generate(&self, text: &str) -> Result<EncodedAudio, VoiceError> {
+    async fn generate(&self, text: &str) -> Result<Vec<u8>, VoiceError> {
         let response =
             match self.client.synthesize_speech()
                 .set_voice(self.voice_selection_params.clone())
@@ -135,7 +135,7 @@ impl Source for GoogleSource {
                     Err(err) => return Err(VoiceError::Api(err.into()))
                 };
 
-        Ok(EncodedAudio(response.audio_content.to_vec()))
+        Ok(response.audio_content.to_vec())
     }
 }
 
