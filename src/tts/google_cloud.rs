@@ -51,7 +51,7 @@ impl From<Encoding> for AudioEncoding {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct GoogleSourceConfig {
+pub struct GoogleCloudVoiceConfig {
     pub language_code: String,
     pub name: Option<String>,
     pub ssml_gender: Option<GenderConfig>,
@@ -59,11 +59,11 @@ pub struct GoogleSourceConfig {
     pub speaking_rate: Option<f32>,
     pub pitch: Option<f64>,
     pub volume_gain_db: Option<f64>,
-    pub encoding: Encoding,
+    pub encoding: Option<Encoding>,
 }
 
-impl From<GoogleSourceConfig> for (VoiceSelectionParams, AudioConfig) {
-    fn from(c: GoogleSourceConfig) -> (VoiceSelectionParams, AudioConfig) {
+impl From<GoogleCloudVoiceConfig> for (VoiceSelectionParams, AudioConfig) {
+    fn from(c: GoogleCloudVoiceConfig) -> (VoiceSelectionParams, AudioConfig) {
         let params = VoiceSelectionParams::new()
             .set_language_code(&c.language_code)
             .set_name(&c.name.unwrap_or_default())
@@ -81,15 +81,15 @@ impl From<GoogleSourceConfig> for (VoiceSelectionParams, AudioConfig) {
     }
 }
 
-pub struct GoogleSource {
+pub struct GoogleCloudVoice {
     identifier: String,
     client: TextToSpeech,
     voice_selection_params: VoiceSelectionParams,
     audio_config: AudioConfig
 }
 
-impl GoogleSource {
-    pub fn new(client: TextToSpeech, config: GoogleSourceConfig) -> Self {
+impl GoogleCloudVoice {
+    pub fn new(client: TextToSpeech, config: GoogleCloudVoiceConfig) -> Self {
         let (voice_selection_params, audio_config) = config.into();
         let identifier = Self::build_identifier(&voice_selection_params, &audio_config);
         Self {
@@ -102,7 +102,7 @@ impl GoogleSource {
 
     fn build_identifier(voice_selection_params: &VoiceSelectionParams, audio_config: &AudioConfig) -> String {
         format!(
-            "google-(lang:{},name:{},gender:{},model:{},encoding:{},speaking_rate:{},pitch:{},gain:{},sample_rate_hz:{})",
+            "google_cloud-(lang:{},name:{},gender:{},model:{},encoding:{},speaking_rate:{},pitch:{},gain:{},sample_rate_hz:{})",
             voice_selection_params.language_code,
             voice_selection_params.name,
             voice_selection_params.ssml_gender,
@@ -117,7 +117,7 @@ impl GoogleSource {
 }
 
 #[async_trait]
-impl Voice for GoogleSource {
+impl Voice for GoogleCloudVoice {
     fn identifier(&self) -> &str {
         self.identifier.as_str()
     }
@@ -162,6 +162,6 @@ mod tests {
             .set_sample_rate_hertz(48000)
             .set_volume_gain_db(3);
 
-        assert_eq!(GoogleSource::build_identifier(&voice_params, &audio_config), "google-(lang:ja-JP,name:ja-JP-Wavenet-A,gender:FEMALE,model:default,encoding:PCM,speaking_rate:1.5,pitch:-2,gain:3,sample_rate_hz:48000)");
+        assert_eq!(GoogleCloudVoice::build_identifier(&voice_params, &audio_config), "google_cloud-(lang:ja-JP,name:ja-JP-Wavenet-A,gender:FEMALE,model:default,encoding:PCM,speaking_rate:1.5,pitch:-2,gain:3,sample_rate_hz:48000)");
     }
 }

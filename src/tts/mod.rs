@@ -1,5 +1,5 @@
 mod cache;
-mod google;
+mod google_cloud;
 
 use async_trait::async_trait;
 use thiserror::Error;
