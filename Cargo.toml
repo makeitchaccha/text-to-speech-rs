@@ -15,4 +15,8 @@ sha2 = "0.10.9"
 hex = "0.4.3"
 tracing = "0.1.43"
 tracing-subscriber = "0.3.22"
+songbird = { version = "0.5.0", features = ["builtin-queue"] }
+poise = "0.6.1"
+dashmap = "6.1.0"
+symphonia = { version = "0.5.5", features = ["all"] }
 config = "0.15.19"

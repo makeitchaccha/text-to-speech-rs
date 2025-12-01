@@ -7,7 +7,7 @@ use crate::tts::google_cloud::GoogleCloudVoiceConfig;
 pub fn load_config(path: &str) -> anyhow::Result<AppConfig> {
     let config = Config::builder()
         .add_source(config::File::with_name(path))
-        .add_source(config::Environment::with_prefix("TTSBOT").separator("__"))
+        .add_source(config::Environment::with_prefix("TTSBOT").separator("_"))
         .build()?;
 
     config.try_deserialize()

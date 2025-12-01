@@ -26,6 +26,7 @@ impl From<GenderConfig> for SsmlVoiceGender {
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Default)]
+#[serde(rename_all(deserialize = "snake_case"))]
 pub enum Encoding {
     #[default]
     Linear16,
