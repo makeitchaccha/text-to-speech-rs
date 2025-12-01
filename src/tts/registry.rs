@@ -6,6 +6,7 @@ use anyhow::Context;
 use google_cloud_texttospeech_v1::client::TextToSpeech;
 use std::collections::HashMap;
 use std::sync::Arc;
+use moka::future::Cache;
 
 #[derive(Clone)]
 pub struct VoiceRegistry {
@@ -30,13 +31,22 @@ impl VoiceRegistry {
 
 pub struct VoiceRegistryBuilder {
     config: AppConfig,
+    moka_cache: Option<Cache<String, Vec<u8>>>,
     google_cloud: Option<TextToSpeech>,
 }
 
 impl VoiceRegistryBuilder {
     fn new(config: AppConfig) -> Self {
+        let moka_cache = match &config.cache {
+            CacheConfig::InMemory(c) => {
+                Some(Cache::new(c.capacity))
+            },
+            _ => None,
+        };
+
         Self {
             config,
+            moka_cache,
             google_cloud: None,
         }
     }
@@ -72,7 +82,7 @@ impl VoiceRegistryBuilder {
     fn wrap_with_cache(&self, voice: Box<dyn Voice>) -> Arc<dyn Voice> {
         match &self.config.cache {
             CacheConfig::Disabled => Arc::from(voice),
-            CacheConfig::InMemory(cache) => Arc::new(CachedVoice::new(voice, cache.capacity)),
+            CacheConfig::InMemory(_) => Arc::new(CachedVoice::new(voice, self.moka_cache.as_ref().expect("moka cache must be set").clone())),
         }
     }
 }
@@ -147,7 +157,6 @@ mod tests {
         // build without client
         let result = VoiceRegistry::builder(config)
             .build();
-
         assert!(result.is_err());
     }
 }

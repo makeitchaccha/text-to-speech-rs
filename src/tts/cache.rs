@@ -1,5 +1,8 @@
+use std::io::Write;
 use async_trait::async_trait;
 use moka::future::Cache;
+use sha2::Digest;
+use sha2::digest::Update;
 use crate::tts::{Voice, VoiceError};
 
 pub struct CachedVoice {
@@ -9,11 +12,11 @@ pub struct CachedVoice {
 }
 
 impl CachedVoice {
-    pub fn new(inner: Box<dyn Voice>, capacity: u64) -> Self {
+    pub fn new(inner: Box<dyn Voice>, cache: Cache<String, Vec<u8>>) -> Self {
         Self {
             identifier: format!("cached-{}", inner.identifier()),
             inner,
-            cache: Cache::new(capacity)
+            cache,
         }
     }
 }
@@ -25,13 +28,15 @@ impl Voice for CachedVoice {
     }
 
     async fn generate(&self, text: &str) -> Result<Vec<u8>, VoiceError> {
-        if let Some(data) = self.cache.get(text).await {
+        let key = hex::encode(sha2::Sha256::new().chain(self.identifier.as_bytes()).chain(text.as_bytes()).finalize());
+
+        if let Some(data) = self.cache.get(&key).await {
             return Ok(data)
         }
 
         let data = self.inner.generate(text).await?;
 
-        self.cache.insert(text.to_owned(), data.clone()).await;
+        self.cache.insert(key, data.clone()).await;
 
         Ok(data)
     }
@@ -70,7 +75,7 @@ mod tests {
         let mock = MockVoice::new();
         let call_count = mock.call_count.clone();
 
-        let cached_voice = CachedVoice::new(Box::new(mock), 100);
+        let cached_voice = CachedVoice::new(Box::new(mock), Cache::new(100));
 
         let text = "hello";
 
