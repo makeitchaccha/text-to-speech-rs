@@ -2,16 +2,33 @@ use std::collections::HashMap;
 use serde::Deserialize;
 use crate::tts::google_cloud::GoogleCloudVoiceConfig;
 
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct AppConfig {
     pub bot: BotConfig,
 
-    pub presets: HashMap<String, PresetConfig>
+    pub cache: CacheConfig,
+
+    pub presets: HashMap<String, PresetConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct BotConfig {
     pub token: String
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(tag = "type")]
+pub enum CacheConfig {
+    #[serde(rename = "disabled")]
+    Disabled,
+    #[serde(rename = "in_memory")]
+    InMemory(InMemoryCacheConfig),
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct InMemoryCacheConfig {
+    pub capacity: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
