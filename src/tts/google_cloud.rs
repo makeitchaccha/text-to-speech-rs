@@ -50,7 +50,7 @@ impl From<Encoding> for AudioEncoding {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize,Default)]
 pub struct GoogleCloudVoiceConfig {
     pub language_code: String,
     pub name: Option<String>,

@@ -74,3 +74,81 @@ impl VoiceRegistryBuilder {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::{BotConfig, CacheConfig, InMemoryCacheConfig};
+    use crate::tts::google_cloud::GoogleCloudVoiceConfig;
+
+    fn create_test_config(cache: CacheConfig) -> AppConfig {
+        let mut presets = HashMap::new();
+        presets.insert(
+            "test_preset".to_string(),
+            PresetConfig::GoogleCloudVoice(GoogleCloudVoiceConfig {
+                language_code: "ja-JP".to_string(),
+                name: Some("ja-JP-Wavenet-A".to_string()),
+                ..Default::default()
+            }),
+        );
+
+        AppConfig {
+            bot: BotConfig {
+                token: "dummy_token".to_string(),
+            },
+            cache,
+            presets,
+        }
+    }
+
+    async fn create_dummy_client() -> TextToSpeech {
+        TextToSpeech::builder().with_endpoint("http://localhost:0").build().await.unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_build_with_cache_enabled() {
+        let config = create_test_config(CacheConfig::InMemory(InMemoryCacheConfig { capacity: 100 }));
+        let client = create_dummy_client().await;
+
+        let registry = VoiceRegistry::builder(config)
+            .google_cloud(client)
+            .build()
+            .expect("Should build successfully");
+
+        let voice = registry.get("test_preset").expect("Preset should exist");
+
+        assert!(voice.identifier().starts_with("cached"), "ID should start with cached: {}", voice.identifier());
+        assert!(voice.identifier().contains("google"), "ID should contain internal voice id");
+    }
+
+    #[tokio::test]
+    async fn test_build_with_cache_disabled() {
+        let config = create_test_config(CacheConfig::Disabled);
+        let client = create_dummy_client().await;
+
+        let registry = VoiceRegistry::builder(config)
+            .google_cloud(client)
+            .build()
+            .expect("Should build successfully");
+
+        let voice = registry.get("test_preset").expect("Preset should exist");
+
+        assert!(!voice.identifier().starts_with("cached"), "ID should NOT start with cached: {}", voice.identifier());
+        assert!(voice.identifier().starts_with("google"), "ID should start directly with google");
+    }
+
+    #[tokio::test]
+    async fn test_build_fail_missing_client() {
+        let config = create_test_config(CacheConfig::Disabled);
+
+        // build without client
+        let result = VoiceRegistry::builder(config)
+            .build();
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.err().unwrap().to_string(),
+            "Google Cloud text-to-speech is required for Google Cloud presets"
+        );
+    }
+}
