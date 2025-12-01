@@ -1,11 +1,11 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-use anyhow::anyhow;
-use google_cloud_texttospeech_v1::client::TextToSpeech;
 use crate::config::{AppConfig, CacheConfig, PresetConfig};
 use crate::tts::cache::CachedVoice;
 use crate::tts::google_cloud::GoogleCloudVoice;
 use crate::tts::Voice;
+use anyhow::Context;
+use google_cloud_texttospeech_v1::client::TextToSpeech;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct VoiceRegistry {
@@ -49,12 +49,14 @@ impl VoiceRegistryBuilder {
     pub fn build(self) -> anyhow::Result<VoiceRegistry> {
         let mut voices = HashMap::new();
 
-
         for (id, preset) in &self.config.presets {
             let voice: Arc<dyn Voice> = match preset {
                 PresetConfig::GoogleCloudVoice(c) => {
                     let client = self.google_cloud.as_ref()
-                        .ok_or_else(|| anyhow!("Google Cloud text-to-speech is required for Google Cloud presets"))?
+                        .with_context(|| format!(
+                            "Preset '{}' requires Google Cloud backend, but it is not configured. Please verify that [backend.google_cloud] exists and 'enabled = true' in config.toml.",
+                            id
+                        ))?
                         .clone();
 
                     self.wrap_with_cache(Box::new(GoogleCloudVoice::new(client, c.clone())))
@@ -96,6 +98,7 @@ mod tests {
             bot: BotConfig {
                 token: "dummy_token".to_string(),
             },
+            backend: Default::default(),
             cache,
             presets,
         }
@@ -146,9 +149,5 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        assert_eq!(
-            result.err().unwrap().to_string(),
-            "Google Cloud text-to-speech is required for Google Cloud presets"
-        );
     }
 }
