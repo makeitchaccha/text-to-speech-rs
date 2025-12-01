@@ -1,7 +1,18 @@
 use std::collections::HashMap;
+use anyhow::anyhow;
+use config::Config;
 use serde::Deserialize;
 use crate::tts::google_cloud::GoogleCloudVoiceConfig;
 
+pub fn load_config(path: &str) -> anyhow::Result<AppConfig> {
+    let config = Config::builder()
+        .add_source(config::File::with_name(path))
+        .add_source(config::Environment::with_prefix("TTSBOT").separator("__"))
+        .build()?;
+
+    config.try_deserialize()
+        .map_err(|e| anyhow!(e))
+}
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct AppConfig {

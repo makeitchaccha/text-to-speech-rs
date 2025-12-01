@@ -1,4 +1,3 @@
-use std::io::Write;
 use async_trait::async_trait;
 use moka::future::Cache;
 use sha2::Digest;

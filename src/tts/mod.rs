@@ -1,6 +1,6 @@
 mod cache;
 pub mod google_cloud;
-mod registry;
+pub mod registry;
 
 use async_trait::async_trait;
 use thiserror::Error;

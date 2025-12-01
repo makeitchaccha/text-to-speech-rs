@@ -1,3 +1,3 @@
 pub mod tts;
 mod session;
-mod config;
+pub mod config;
