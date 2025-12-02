@@ -124,6 +124,7 @@ impl Voice for GoogleCloudVoice {
     }
 
     async fn generate(&self, text: &str) -> Result<Vec<u8>, VoiceError> {
+        tracing::debug!("google cloud voice requested to generate: {}", text);
         let response =
             match self.client.synthesize_speech()
                 .set_voice(self.voice_selection_params.clone())

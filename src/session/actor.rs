@@ -1,47 +1,45 @@
 use std::sync::{Arc};
 use async_trait::async_trait;
-use songbird::{Call, Event, EventContext, EventHandler};
-use tokio::sync::{mpsc, Mutex};
+use poise::serenity_prelude::UserId;
+use songbird::{Call, Event, EventContext, EventHandler, TrackEvent};
+use tokio::select;
+use tokio::sync::{broadcast, mpsc, Mutex};
 use tracing;
-use crate::session::{Priority, SessionCommand, SessionHandle};
+use crate::session::{Priority, SessionCommand, SessionHandle, Speaker};
 use crate::session::sanitizer::sanitize;
 use crate::tts::Voice;
 
-struct QueueItem {
-    text: String,
-    voice: Arc<dyn Voice>,
-    priority: Priority
-}
 
-enum WorkerEvent {
-    Ready
-}
-
+#[derive(Clone)]
 enum WorkerCommand{
-    Play(QueueItem)
+    GenerateAndPlay(GenerateAndPlay)
 }
 
-struct PlaybackEndNotifier { tx: mpsc::Sender<WorkerEvent> }
-#[async_trait]
-impl EventHandler for PlaybackEndNotifier {
-    async fn act(&self, _: &EventContext<'_>) -> Option<Event> {
-        let _ = self.tx.send(WorkerEvent::Ready).await;
-        None
-    }
+#[derive(Clone)]
+struct GenerateAndPlay{
+    text: String,
+    speaker: Option<Speaker>,
+    voice: Arc<dyn Voice>,
 }
 
 pub struct SessionActor {
     rx: mpsc::Receiver<SessionCommand>,
-    call: Arc<Mutex<Call>>
+    system_tx: mpsc::Sender<WorkerCommand>,
+    user_tx: broadcast::Sender<WorkerCommand>,
 }
 
 impl SessionActor {
     pub fn new(call: Arc<Mutex<Call>>) -> (Self, SessionHandle) {
         let (cmd_tx, cmd_rx) = mpsc::channel(100);
 
+        let (system_tx, system_rx) = mpsc::channel(100);
+        let (user_tx, user_rx) = broadcast::channel(100);
+
+        tokio::spawn(Self::worker_loop(call, system_rx, user_rx));
         let actor = Self {
             rx: cmd_rx,
-            call
+            system_tx,
+            user_tx,
         };
 
         (actor, SessionHandle::new(cmd_tx))
@@ -52,35 +50,146 @@ impl SessionActor {
 
         while let Some(cmd) = self.rx.recv().await {
             match cmd {
-                SessionCommand::Speak { text, voice, priority: _ } => {
-                    self.handle_speak(sanitize(&text, 300), voice).await;
+                SessionCommand::Speak { text, voice, speaker, priority } => {
+                    let clean_text = sanitize(&text, 300);
+
+                    let command = WorkerCommand::GenerateAndPlay(GenerateAndPlay {
+                        text: clean_text,
+                        speaker,
+                        voice,
+                    });
+
+                    // ignore since not recoverable
+                    match priority {
+                        Priority::System => { let _ = self.system_tx.send(command).await; },
+                        Priority::User => { let _ = self.user_tx.send(command); },
+                    };
                 }
                 SessionCommand::Stop => {
-                    let mut handler = self.call.lock().await;
-                    handler.stop();
+
                 }
                 SessionCommand::NotifyPlaybackEnd => {
-                    // ignore
+
                 }
             }
         }
     }
 
-    async fn handle_speak(&mut self, text: String, voice: Arc<dyn Voice>) {
-        let mut handler = self.call.lock().await;
-        if handler.queue().len() >= 5 {
-            tracing::warn!("Queue full, dropping: {}", text);
-            return;
+    async fn worker_loop(call: Arc<Mutex<Call>>, mut system_rx: mpsc::Receiver<WorkerCommand>, mut user_rx: broadcast::Receiver<WorkerCommand>) {
+        tracing::info!("Worker started");
+
+        struct PlaybackEndHandler{
+            tx: mpsc::Sender<()>,
         }
 
-        let audio_data = match voice.generate(&text).await {
-            Ok(audio_data) => audio_data,
-            Err(e) => {
-                tracing::error!("Failed to generate audio: {}", e);
-                return;
+        #[async_trait]
+        impl EventHandler for PlaybackEndHandler {
+            async fn act(&self, _: &EventContext<'_>) -> Option<Event> {
+                let _ = self.tx.send(()).await;
+                None
             }
+        }
+
+
+        // Token system for eager voice generation
+        // user voice generation is throttled with tokens
+        //
+        const INITIAL_TOKEN: usize = 3;
+        let mut tokens: isize = INITIAL_TOKEN as isize;
+
+        let mut songbird_rx = {
+            let mut call_guard = call.lock().await;
+            let (tx, rx) = mpsc::channel(INITIAL_TOKEN * 2);
+            call_guard.add_global_event(Event::Track(TrackEvent::End), PlaybackEndHandler{tx});
+            rx
         };
 
-        handler.enqueue_input(audio_data.into()).await;
+        loop {
+            let user_can_consume = tokens > 0;
+
+            select! {
+                biased;
+                Some(_) = songbird_rx.recv() => {
+                    if tokens < INITIAL_TOKEN as isize {
+                        tokens += 1;
+                        tracing::debug!("Token released. Current: {}", tokens);
+                    }
+                }
+                Some(cmd) = system_rx.recv() => {
+                    match cmd {
+                        WorkerCommand::GenerateAndPlay(cmd) => {
+                            match Self::generate_and_play(cmd, call.clone()).await {
+                                Ok(len) => {
+                                    tracing::debug!("consuming {} tokens", len);
+                                    tokens -= len as isize;
+                                }
+                                Err(err) => {
+                                    tracing::warn!("Couldn't generate playback: {:?}", err);
+                                }
+                            }
+                        },
+                    }
+                }
+
+                cmd_result = user_rx.recv(), if user_can_consume => {
+                    match cmd_result {
+                        Ok(WorkerCommand::GenerateAndPlay(cmd)) => {
+                            match Self::generate_and_play(cmd, call.clone()).await {
+                                Ok(len) => {
+                                    tracing::debug!("consuming {} tokens", len);
+                                    tokens -= len as isize;
+                                }
+                                Err(err) => {
+                                    tracing::warn!("Couldn't generate playback: {:?}", err);
+                                }
+                            }
+                        },
+                        Err(broadcast::error::RecvError::Lagged(count)) => {
+                            tracing::warn!("worker lagged, skip {} commands", count);
+                            continue;
+                        },
+                        Err(err) => {
+                            tracing::error!("worker error: {}", err);
+                            continue;
+                        }
+                    }
+                }
+                else => {
+                    break;
+                }
+            }
+
+        }
+    }
+
+    async fn generate_and_play(command: GenerateAndPlay, call: Arc<Mutex<Call>>) -> anyhow::Result<usize> {
+        let mut audios = Vec::new();
+        if let Some(speaker) = command.speaker.as_ref() {
+            let audio_data = match command.voice.generate(&speaker.name).await {
+                Ok(data) => data,
+                Err(e) => {
+                    return Err(anyhow::anyhow!(e).context("Failed to generate voice"));
+                }
+            };
+
+            audios.push(audio_data);
+        }
+
+        let audio_data = match command.voice.generate(&command.text).await {
+            Ok(data) => data,
+            Err(e) => {
+                return Err(anyhow::anyhow!(e).context("Failed to generate voice"));
+            }
+        };
+        audios.push(audio_data);
+
+        {
+            let mut call_guard = call.lock().await;
+            for audio in audios.iter() {
+                call_guard.enqueue_input(audio.clone().into()).await;
+            }
+        }
+
+        Ok(audios.len())
     }
 }

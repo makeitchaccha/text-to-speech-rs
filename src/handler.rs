@@ -2,9 +2,10 @@ use std::env;
 use anyhow::Context;
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::{ChannelId, GuildId};
+use serde::de::Unexpected::Str;
 use crate::session::actor::SessionActor;
 use crate::session::manager::SessionManager;
-use crate::session::Priority;
+use crate::session::Speaker;
 use crate::tts::registry::VoiceRegistry;
 
 pub struct Data{
@@ -38,6 +39,8 @@ pub async fn event_handler(
 
             tokio::spawn(actor.run());
 
+            handle.announce(String::from("Canaryがボイスチャンネルに参加しました"), data.registry.get("wavenet-a").unwrap()).await?;
+
             data.session_manager.register(data.tmp_guild_id, data.tmp_reading_channel_id, handle);
         }
 
@@ -49,7 +52,7 @@ pub async fn event_handler(
 
                 let text = new_message.content.clone();
 
-                handle.speak(text, voice).await.context("failed to send message")?;
+                handle.speak(text, voice, Speaker::new(new_message.author.id, new_message.author.display_name().to_string())).await.context("failed to send message")?;
             }
         }
         _ => {}

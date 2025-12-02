@@ -1,21 +1,35 @@
 use std::sync::Arc;
 use anyhow::Context;
-use async_trait::async_trait;
+use poise::serenity_prelude::UserId;
 use tokio::sync::mpsc;
 use crate::tts::Voice;
 
 pub mod actor;
 pub mod manager;
+mod sanitizer;
 
-pub enum Priority {
-    Low,
-    High,
+enum Priority {
+    User,
+    System,
 }
 
-pub enum SessionCommand {
+#[derive(Debug, Clone)]
+pub struct Speaker{
+    user_id: UserId,
+    name: String,
+}
+
+impl Speaker{
+    pub fn new(user_id: UserId, name: String) -> Self{
+        Self{user_id, name}
+    }
+}
+
+enum SessionCommand {
     Speak {
         text: String,
         voice: Arc<dyn Voice>,
+        speaker: Option<Speaker>,
         priority: Priority,
     },
     Stop,
@@ -28,12 +42,17 @@ pub struct SessionHandle {
 }
 
 impl SessionHandle {
-    pub fn new(tx: mpsc::Sender<SessionCommand>) -> Self {
+    fn new(tx: mpsc::Sender<SessionCommand>) -> Self {
         Self { tx }
     }
 
-    pub async fn speak(&self, text: String, voice: Arc<dyn Voice>) -> anyhow::Result<()> {
-        self.tx.send(SessionCommand::Speak { text, voice, priority: Priority::Low }).await?;
+    pub async fn speak(&self, text: String, voice: Arc<dyn Voice>, speaker: Speaker) -> anyhow::Result<()> {
+        self.tx.send(SessionCommand::Speak { text, voice, speaker: Some(speaker), priority: Priority::User }).await?;
+        Ok(())
+    }
+
+    pub async fn announce(&self, text: String, voice: Arc<dyn Voice>) -> anyhow::Result<()> {
+        self.tx.send(SessionCommand::Speak { text, voice, speaker: None, priority: Priority::System}).await?;
         Ok(())
     }
 

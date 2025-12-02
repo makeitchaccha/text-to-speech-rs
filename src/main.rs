@@ -1,21 +1,23 @@
-use std::env;
 use anyhow::Context;
 use google_cloud_texttospeech_v1::client::TextToSpeech;
-use tracing::info;
+use std::env;
 use text_to_speech_rs::config::load_config;
 use text_to_speech_rs::tts::registry::VoiceRegistry;
+use tracing::info;
 
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::{ChannelId, GatewayIntents, GuildId};
-use songbird::{Config, SerenityInit};
-use symphonia::core::codecs::CodecRegistry;
+use songbird::SerenityInit;
+use tracing_subscriber::EnvFilter;
 use text_to_speech_rs::handler;
 use text_to_speech_rs::handler::event_handler;
 use text_to_speech_rs::session::manager::SessionManager;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
 
     info!("Starting text-to-speech bot");
 
@@ -65,11 +67,11 @@ async fn main() -> anyhow::Result<()> {
         .build();
 
     let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
-    let client = serenity::ClientBuilder::new(config.bot.token, intents)
+    let mut client = serenity::ClientBuilder::new(config.bot.token, intents)
         .register_songbird()
-        .framework(framework).await;
+        .framework(framework).await?;
 
-    client?.start().await?;
+    client.start().await?;
 
     Ok(())
 }
