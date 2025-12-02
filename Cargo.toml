@@ -20,3 +20,4 @@ poise = "0.6.1"
 dashmap = "6.1.0"
 symphonia = { version = "0.5.5", features = ["all"] }
 config = "0.15.19"
+regex = "1.12.2"

@@ -4,6 +4,7 @@ use songbird::{Call, Event, EventContext, EventHandler};
 use tokio::sync::{mpsc, Mutex};
 use tracing;
 use crate::session::{Priority, SessionCommand, SessionHandle};
+use crate::session::sanitizer::sanitize;
 use crate::tts::Voice;
 
 struct QueueItem {
@@ -52,7 +53,7 @@ impl SessionActor {
         while let Some(cmd) = self.rx.recv().await {
             match cmd {
                 SessionCommand::Speak { text, voice, priority: _ } => {
-                    self.handle_speak(text, voice).await;
+                    self.handle_speak(sanitize(&text, 300), voice).await;
                 }
                 SessionCommand::Stop => {
                     let mut handler = self.call.lock().await;
