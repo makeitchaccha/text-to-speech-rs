@@ -1,8 +1,8 @@
+use crate::tts::{Voice, VoiceError};
 use async_trait::async_trait;
 use moka::future::Cache;
-use sha2::Digest;
 use sha2::digest::Update;
-use crate::tts::{Voice, VoiceError};
+use sha2::Digest;
 
 pub struct CachedVoice {
     identifier: String,
@@ -46,8 +46,8 @@ impl Voice for CachedVoice {
 
 #[cfg(test)]
 mod tests {
-    use crate::tts::test_utils::MockVoice;
     use super::*;
+    use crate::tts::test_utils::MockVoice;
 
 
     #[tokio::test]

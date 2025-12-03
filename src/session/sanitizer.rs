@@ -1,5 +1,5 @@
-use std::sync::LazyLock;
 use regex::Regex;
+use std::sync::LazyLock;
 
 static URL_REGEX: LazyLock<Regex> = LazyLock::new(|| {Regex::new(r"https?://\S+").unwrap() });
 static EMOJI_REGEX: LazyLock<Regex> = LazyLock::new(|| {Regex::new(r"<a?:(\w+):\d+>").unwrap() });

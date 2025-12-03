@@ -1,14 +1,12 @@
-use std::sync::{Arc};
-use async_trait::async_trait;
-use poise::serenity_prelude::UserId;
-use songbird::{Call, CoreEvent, Event, EventContext, EventHandler, TrackEvent};
-use tokio::select;
-use tokio::sync::{broadcast, mpsc, Mutex};
-use tracing;
-use crate::session::{Priority, SessionCommand, SessionHandle, Speaker};
 use crate::session::driver::AudioDriver;
 use crate::session::sanitizer::sanitize;
+use crate::session::{Priority, SessionCommand, SessionHandle, Speaker};
 use crate::tts::Voice;
+use poise::serenity_prelude::UserId;
+use std::sync::Arc;
+use tokio::select;
+use tokio::sync::{broadcast, mpsc};
+use tracing;
 
 
 #[derive(Clone)]
@@ -101,19 +99,6 @@ impl SessionActor {
 
     async fn worker_loop(driver: Arc<dyn AudioDriver>, mut system_rx: mpsc::Receiver<WorkerCommand>, mut user_rx: broadcast::Receiver<WorkerCommand>) {
         tracing::info!("Worker started");
-
-        struct PlaybackEndHandler{
-            tx: mpsc::Sender<()>,
-        }
-
-        #[async_trait]
-        impl EventHandler for PlaybackEndHandler {
-            async fn act(&self, _: &EventContext<'_>) -> Option<Event> {
-                let _ = self.tx.send(()).await;
-                None
-            }
-        }
-
 
         // Token system for eager voice generation
         // user voice generation is throttled with tokens

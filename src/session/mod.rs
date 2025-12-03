@@ -1,8 +1,7 @@
-use std::sync::Arc;
-use anyhow::Context;
-use poise::serenity_prelude::UserId;
-use tokio::sync::mpsc;
 use crate::tts::Voice;
+use poise::serenity_prelude::UserId;
+use std::sync::Arc;
+use tokio::sync::mpsc;
 
 pub mod actor;
 pub mod manager;
@@ -10,7 +9,7 @@ mod sanitizer;
 pub mod driver;
 
 #[derive(Clone, Copy)]
-enum Priority {
+pub enum Priority {
     User,
     System,
 }
@@ -28,7 +27,7 @@ impl Speaker{
 }
 
 #[derive(Clone)]
-enum SessionCommand {
+pub enum SessionCommand {
     Speak {
         text: String,
         voice: Arc<dyn Voice>,

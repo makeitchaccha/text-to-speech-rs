@@ -1,14 +1,12 @@
-use std::env;
-use std::sync::Arc;
-use anyhow::Context;
-use poise::serenity_prelude as serenity;
-use poise::serenity_prelude::{ChannelId, GuildId};
-use serde::de::Unexpected::Str;
 use crate::session::actor::SessionActor;
 use crate::session::driver::SongbirdDriver;
 use crate::session::manager::SessionManager;
 use crate::session::Speaker;
 use crate::tts::registry::VoiceRegistry;
+use anyhow::Context;
+use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{ChannelId, GuildId};
+use std::sync::Arc;
 
 pub struct Data{
     pub session_manager: SessionManager,

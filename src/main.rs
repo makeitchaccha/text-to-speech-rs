@@ -8,10 +8,10 @@ use tracing::info;
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::{ChannelId, GatewayIntents, GuildId};
 use songbird::SerenityInit;
-use tracing_subscriber::EnvFilter;
 use text_to_speech_rs::handler;
 use text_to_speech_rs::handler::event_handler;
 use text_to_speech_rs::session::manager::SessionManager;
+use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

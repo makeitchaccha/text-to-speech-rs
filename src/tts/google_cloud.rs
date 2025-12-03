@@ -1,5 +1,5 @@
-use async_trait::async_trait;
 use crate::tts::{Voice, VoiceError, DISCORD_SAMPLE_RATE};
+use async_trait::async_trait;
 use google_cloud_texttospeech_v1::client::TextToSpeech;
 use google_cloud_texttospeech_v1::model::{AudioConfig, AudioEncoding, SsmlVoiceGender, SynthesisInput, VoiceSelectionParams};
 use serde::Deserialize;

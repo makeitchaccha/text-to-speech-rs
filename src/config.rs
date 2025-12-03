@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use crate::tts::google_cloud::GoogleCloudVoiceConfig;
 use anyhow::anyhow;
 use config::Config;
 use serde::Deserialize;
-use crate::tts::google_cloud::GoogleCloudVoiceConfig;
+use std::collections::HashMap;
 
 pub fn load_config(path: &str) -> anyhow::Result<AppConfig> {
     let config = Config::builder()

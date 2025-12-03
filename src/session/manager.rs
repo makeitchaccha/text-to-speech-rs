@@ -1,6 +1,6 @@
+use crate::session::SessionHandle;
 use dashmap::DashMap;
 use poise::serenity_prelude::{ChannelId, GuildId};
-use crate::session::SessionHandle;
 
 #[derive(Debug)]
 pub struct SessionManager {

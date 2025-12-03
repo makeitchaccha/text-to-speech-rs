@@ -4,9 +4,9 @@ use crate::tts::google_cloud::GoogleCloudVoice;
 use crate::tts::Voice;
 use anyhow::Context;
 use google_cloud_texttospeech_v1::client::TextToSpeech;
+use moka::future::Cache;
 use std::collections::HashMap;
 use std::sync::Arc;
-use moka::future::Cache;
 
 #[derive(Clone)]
 pub struct VoiceRegistry {
