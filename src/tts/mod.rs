@@ -27,3 +27,38 @@ pub trait Voice: Send + Sync{
 
     async fn generate(&self, text: &str) -> Result<Vec<u8>, VoiceError>;
 }
+
+#[cfg(test)]
+pub mod test_utils {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use async_trait::async_trait;
+    use crate::tts::{Voice, VoiceError};
+
+    #[derive(Clone)]
+    pub struct MockVoice {
+        call_count: Arc<AtomicUsize>,
+    }
+
+    impl MockVoice {
+        pub fn new() -> Self {
+            Self { call_count: Arc::new(AtomicUsize::new(0)) }
+        }
+
+        pub fn call_count(&self) -> usize {
+            self.call_count.load(Ordering::SeqCst)
+        }
+    }
+
+    #[async_trait]
+    impl Voice for MockVoice {
+        fn identifier(&self) -> &str {
+            "mock"
+        }
+
+        async fn generate(&self, text: &str) -> Result<Vec<u8>, VoiceError> {
+            self.call_count.fetch_add(1, Ordering::SeqCst);
+            Ok(text.as_bytes().to_vec())
+        }
+    }
+}

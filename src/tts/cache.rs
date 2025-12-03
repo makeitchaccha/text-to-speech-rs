@@ -46,52 +46,29 @@ impl Voice for CachedVoice {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-    use std::sync::atomic::{AtomicUsize, Ordering};
+    use crate::tts::test_utils::MockVoice;
     use super::*;
 
-    struct MockVoice {
-        call_count: Arc<AtomicUsize>,
-    }
-
-    impl MockVoice {
-        fn new() -> Self {
-            Self { call_count: Arc::new(AtomicUsize::new(0)) }
-        }
-    }
-
-    #[async_trait]
-    impl Voice for MockVoice {
-        fn identifier(&self) -> &str {
-            "mock"
-        }
-
-        async fn generate(&self, text: &str) -> Result<Vec<u8>, VoiceError> {
-            self.call_count.fetch_add(1, Ordering::SeqCst);
-            Ok(text.as_bytes().to_vec())
-        }
-    }
 
     #[tokio::test]
     async fn test_cache_hit() {
         let mock = MockVoice::new();
-        let call_count = mock.call_count.clone();
 
-        let cached_voice = CachedVoice::new(Box::new(mock), Cache::new(100));
+        let cached_voice = CachedVoice::new(Box::new(mock.clone()), Cache::new(100));
 
         let text = "hello";
 
         // in case of same text
         let result = cached_voice.generate(text).await.unwrap();
         assert_eq!(result.to_vec(), b"hello");
-        assert_eq!(call_count.load(Ordering::SeqCst), 1, "First call should hit the inner voice");
+        assert_eq!(mock.call_count(), 1, "First call should hit the inner voice");
 
         let result = cached_voice.generate(text).await.unwrap();
         assert_eq!(result.to_vec(), b"hello");
-        assert_eq!(call_count.load(Ordering::SeqCst), 1, "Second call should hit the cache");
+        assert_eq!(mock.call_count(), 1, "Second call should hit the cache");
 
         // different text
         let _ = cached_voice.generate("world").await;
-        assert_eq!(call_count.load(Ordering::SeqCst), 2, "New text should hit the inner voice");
+        assert_eq!(mock.call_count(), 2, "New text should hit the inner voice");
     }
 }
