@@ -7,7 +7,9 @@ use crate::tts::Voice;
 pub mod actor;
 pub mod manager;
 mod sanitizer;
+pub mod driver;
 
+#[derive(Clone, Copy)]
 enum Priority {
     User,
     System,
@@ -25,6 +27,7 @@ impl Speaker{
     }
 }
 
+#[derive(Clone)]
 enum SessionCommand {
     Speak {
         text: String,

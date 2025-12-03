@@ -6,6 +6,7 @@ use tokio::select;
 use tokio::sync::{broadcast, mpsc, Mutex};
 use tracing;
 use crate::session::{Priority, SessionCommand, SessionHandle, Speaker};
+use crate::session::driver::AudioDriver;
 use crate::session::sanitizer::sanitize;
 use crate::tts::Voice;
 
@@ -26,39 +27,30 @@ pub struct SessionActor {
     rx: mpsc::Receiver<SessionCommand>,
     system_tx: mpsc::Sender<WorkerCommand>,
     user_tx: broadcast::Sender<WorkerCommand>,
-    call: Arc<Mutex<Call>>
+    driver: Arc<dyn AudioDriver>,
 }
 
 impl SessionActor {
-    pub fn new(call: Arc<Mutex<Call>>) -> (Self, SessionHandle) {
+    pub fn new(driver: Arc<dyn AudioDriver>) -> (Self, SessionHandle) {
         let (cmd_tx, cmd_rx) = mpsc::channel(100);
 
         let (system_tx, system_rx) = mpsc::channel(100);
         let (user_tx, user_rx) = broadcast::channel(100);
 
         {
-            let tx = cmd_tx.clone();
-            struct DisconnectHandler { tx: mpsc::Sender<SessionCommand> }
-            #[async_trait]
-            impl EventHandler for DisconnectHandler {
-                async fn act(&self, _: &EventContext<'_>) -> Option<Event> {
-                    let _ = self.tx.send(SessionCommand::Disconnect).await;
-                    None
-                }
-            }
-            let call = call.clone();
+            let driver = driver.clone();
+            let cmd_tx = cmd_tx.clone();
             tokio::spawn(async move {
-                let mut handler = call.lock().await;
-                handler.add_global_event(Event::Core(CoreEvent::DriverDisconnect), DisconnectHandler { tx });
+                driver.subscribe_to_disconnect_event(cmd_tx).await;
             });
         }
 
-        tokio::spawn(Self::worker_loop(call.clone(), system_rx, user_rx));
+        tokio::spawn(Self::worker_loop(driver.clone(), system_rx, user_rx));
         let actor = Self {
             rx: cmd_rx,
             system_tx,
             user_tx,
-            call,
+            driver
         };
 
         (actor, SessionHandle::new(cmd_tx))
@@ -100,15 +92,14 @@ impl SessionActor {
 
         tracing::info!("Session actor stopping, cleaning up...");
 
-        let mut handler = self.call.lock().await;
-        if let Err(e) = handler.leave().await {
+        if let Err(e) = self.driver.leave().await {
             tracing::error!("Failed to leave voice channel during cleanup: {}", e);
         } else {
             tracing::info!("Successfully left voice channel.");
         }
     }
 
-    async fn worker_loop(call: Arc<Mutex<Call>>, mut system_rx: mpsc::Receiver<WorkerCommand>, mut user_rx: broadcast::Receiver<WorkerCommand>) {
+    async fn worker_loop(driver: Arc<dyn AudioDriver>, mut system_rx: mpsc::Receiver<WorkerCommand>, mut user_rx: broadcast::Receiver<WorkerCommand>) {
         tracing::info!("Worker started");
 
         struct PlaybackEndHandler{
@@ -130,9 +121,8 @@ impl SessionActor {
         let mut tokens: isize = INITIAL_TOKEN as isize;
 
         let mut songbird_rx = {
-            let mut call_guard = call.lock().await;
             let (tx, rx) = mpsc::channel(INITIAL_TOKEN * 2);
-            call_guard.add_global_event(Event::Track(TrackEvent::End), PlaybackEndHandler{tx});
+            driver.subscribe_to_end_event(tx).await;
             rx
         };
 
@@ -162,7 +152,7 @@ impl SessionActor {
                             }
                             segments.push(cmd.text.clone());
 
-                            match Self::generate_and_play(segments, cmd.voice, call.clone()).await {
+                            match Self::generate_and_play(segments, cmd.voice, driver.clone()).await {
 
                                 Ok(len) => {
                                     tracing::debug!("consuming {} tokens", len);
@@ -189,7 +179,7 @@ impl SessionActor {
                             }
                             segments.push(cmd.text.clone());
 
-                            match Self::generate_and_play(segments, cmd.voice, call.clone()).await {
+                            match Self::generate_and_play(segments, cmd.voice, driver.clone()).await {
                                 Ok(len) => {
                                     tracing::debug!("consuming {} tokens", len);
                                     tokens -= len as isize;
@@ -217,7 +207,7 @@ impl SessionActor {
         }
     }
 
-    async fn generate_and_play(segment: Vec<String>, voice: Arc<dyn Voice>, call: Arc<Mutex<Call>>) -> anyhow::Result<usize> {
+    async fn generate_and_play(segment: Vec<String>, voice: Arc<dyn Voice>, driver: Arc<dyn AudioDriver>) -> anyhow::Result<usize> {
         let mut audios = Vec::new();
         for segment in segment.iter() {
             let audio_data = match voice.generate(&segment).await {
@@ -229,13 +219,9 @@ impl SessionActor {
             audios.push(audio_data);
         }
 
-        {
-            let mut call_guard = call.lock().await;
-            for audio in audios.iter() {
-                call_guard.enqueue_input(audio.clone().into()).await;
-            }
-        }
+        let len = audios.len();
+        driver.enqueue(audios).await;
 
-        Ok(audios.len())
+        Ok(len)
     }
 }

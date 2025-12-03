@@ -1,9 +1,11 @@
 use std::env;
+use std::sync::Arc;
 use anyhow::Context;
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::{ChannelId, GuildId};
 use serde::de::Unexpected::Str;
 use crate::session::actor::SessionActor;
+use crate::session::driver::SongbirdDriver;
 use crate::session::manager::SessionManager;
 use crate::session::Speaker;
 use crate::tts::registry::VoiceRegistry;
@@ -35,7 +37,7 @@ pub async fn event_handler(
 
             let handler = manager.join(data.tmp_guild_id, data.tmp_voice_channel_id).await.context("failed to connect to the voice channel")?;
 
-            let (actor, handle) = SessionActor::new(handler);
+            let (actor, handle) = SessionActor::new(Arc::new(SongbirdDriver{ call: handler }));
 
             tokio::spawn(actor.run());
 
