@@ -44,6 +44,14 @@ pub async fn event_handler(
             data.session_manager.register(data.tmp_guild_id, data.tmp_reading_channel_id, handle);
         }
 
+        serenity::FullEvent::VoiceStateUpdate { old: _, new } => {
+            if new.user_id != ctx.cache.current_user().id || new.channel_id.is_some() {
+                return Ok(());
+            }
+
+            data.session_manager.remove(new.guild_id.ok_or(anyhow::anyhow!("Guild not found"))?);
+        }
+
         serenity::FullEvent::Message { new_message } => {
             if let Some(handle) = data.session_manager.get_by_text_channel(new_message.channel_id) {
                 let voice = data.registry
@@ -52,7 +60,11 @@ pub async fn event_handler(
 
                 let text = new_message.content.clone();
 
-                handle.speak(text, voice, Speaker::new(new_message.author.id, new_message.author.display_name().to_string())).await.context("failed to send message")?;
+                if let Err(err) = handle.speak(text, voice, Speaker::new(new_message.author.id, new_message.author.display_name().to_string())).await.context("failed to send message") {
+                    tracing::error!("Error sending message: {:?}", err);
+                    // lazy delete
+                    data.session_manager.remove(new_message.guild_id.ok_or(anyhow::anyhow!("Message does not contain guild ID"))?);
+                }
             }
         }
         _ => {}

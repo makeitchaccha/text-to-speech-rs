@@ -1,7 +1,7 @@
 use std::sync::{Arc};
 use async_trait::async_trait;
 use poise::serenity_prelude::UserId;
-use songbird::{Call, Event, EventContext, EventHandler, TrackEvent};
+use songbird::{Call, CoreEvent, Event, EventContext, EventHandler, TrackEvent};
 use tokio::select;
 use tokio::sync::{broadcast, mpsc, Mutex};
 use tracing;
@@ -26,6 +26,7 @@ pub struct SessionActor {
     rx: mpsc::Receiver<SessionCommand>,
     system_tx: mpsc::Sender<WorkerCommand>,
     user_tx: broadcast::Sender<WorkerCommand>,
+    call: Arc<Mutex<Call>>
 }
 
 impl SessionActor {
@@ -35,11 +36,29 @@ impl SessionActor {
         let (system_tx, system_rx) = mpsc::channel(100);
         let (user_tx, user_rx) = broadcast::channel(100);
 
-        tokio::spawn(Self::worker_loop(call, system_rx, user_rx));
+        {
+            let tx = cmd_tx.clone();
+            struct DisconnectHandler { tx: mpsc::Sender<SessionCommand> }
+            #[async_trait]
+            impl EventHandler for DisconnectHandler {
+                async fn act(&self, _: &EventContext<'_>) -> Option<Event> {
+                    let _ = self.tx.send(SessionCommand::Disconnect).await;
+                    None
+                }
+            }
+            let call = call.clone();
+            tokio::spawn(async move {
+                let mut handler = call.lock().await;
+                handler.add_global_event(Event::Core(CoreEvent::DriverDisconnect), DisconnectHandler { tx });
+            });
+        }
+
+        tokio::spawn(Self::worker_loop(call.clone(), system_rx, user_rx));
         let actor = Self {
             rx: cmd_rx,
             system_tx,
             user_tx,
+            call,
         };
 
         (actor, SessionHandle::new(cmd_tx))
@@ -67,11 +86,25 @@ impl SessionActor {
                 }
                 SessionCommand::Stop => {
 
+                },
+                SessionCommand::Leave => {
+                    tracing::info!("Received Leave command");
+                    break;
                 }
-                SessionCommand::NotifyPlaybackEnd => {
-
+                SessionCommand::Disconnect => {
+                    tracing::warn!("Driver disconnected unexpectedly");
+                    break;
                 }
             }
+        }
+
+        tracing::info!("Session actor stopping, cleaning up...");
+
+        let mut handler = self.call.lock().await;
+        if let Err(e) = handler.leave().await {
+            tracing::error!("Failed to leave voice channel during cleanup: {}", e);
+        } else {
+            tracing::info!("Successfully left voice channel.");
         }
     }
 
@@ -93,7 +126,6 @@ impl SessionActor {
 
         // Token system for eager voice generation
         // user voice generation is throttled with tokens
-        //
         const INITIAL_TOKEN: usize = 3;
         let mut tokens: isize = INITIAL_TOKEN as isize;
 
@@ -103,6 +135,8 @@ impl SessionActor {
             call_guard.add_global_event(Event::Track(TrackEvent::End), PlaybackEndHandler{tx});
             rx
         };
+
+        let mut last_speaker_id: Option<UserId> = None;
 
         loop {
             let user_can_consume = tokens > 0;
@@ -118,7 +152,18 @@ impl SessionActor {
                 Some(cmd) = system_rx.recv() => {
                     match cmd {
                         WorkerCommand::GenerateAndPlay(cmd) => {
-                            match Self::generate_and_play(cmd, call.clone()).await {
+                            let mut segments = Vec::new();
+                            let current_speaker = cmd.speaker.as_ref().map(|s| s.user_id);
+
+                            // read name when current speaker is not same as last one.
+                            if current_speaker != last_speaker_id {
+                                last_speaker_id = current_speaker;
+                                segments.push(cmd.speaker.expect("should be some").name);
+                            }
+                            segments.push(cmd.text.clone());
+
+                            match Self::generate_and_play(segments, cmd.voice, call.clone()).await {
+
                                 Ok(len) => {
                                     tracing::debug!("consuming {} tokens", len);
                                     tokens -= len as isize;
@@ -134,7 +179,17 @@ impl SessionActor {
                 cmd_result = user_rx.recv(), if user_can_consume => {
                     match cmd_result {
                         Ok(WorkerCommand::GenerateAndPlay(cmd)) => {
-                            match Self::generate_and_play(cmd, call.clone()).await {
+                            let mut segments = Vec::new();
+                            let current_speaker = cmd.speaker.as_ref().map(|s| s.user_id);
+
+                            // read name when current speaker is not same as last one.
+                            if current_speaker != last_speaker_id {
+                                last_speaker_id = current_speaker;
+                                segments.push(cmd.speaker.expect("should be some").name);
+                            }
+                            segments.push(cmd.text.clone());
+
+                            match Self::generate_and_play(segments, cmd.voice, call.clone()).await {
                                 Ok(len) => {
                                     tracing::debug!("consuming {} tokens", len);
                                     tokens -= len as isize;
@@ -162,26 +217,17 @@ impl SessionActor {
         }
     }
 
-    async fn generate_and_play(command: GenerateAndPlay, call: Arc<Mutex<Call>>) -> anyhow::Result<usize> {
+    async fn generate_and_play(segment: Vec<String>, voice: Arc<dyn Voice>, call: Arc<Mutex<Call>>) -> anyhow::Result<usize> {
         let mut audios = Vec::new();
-        if let Some(speaker) = command.speaker.as_ref() {
-            let audio_data = match command.voice.generate(&speaker.name).await {
+        for segment in segment.iter() {
+            let audio_data = match voice.generate(&segment).await {
                 Ok(data) => data,
                 Err(e) => {
                     return Err(anyhow::anyhow!(e).context("Failed to generate voice"));
                 }
             };
-
             audios.push(audio_data);
         }
-
-        let audio_data = match command.voice.generate(&command.text).await {
-            Ok(data) => data,
-            Err(e) => {
-                return Err(anyhow::anyhow!(e).context("Failed to generate voice"));
-            }
-        };
-        audios.push(audio_data);
 
         {
             let mut call_guard = call.lock().await;

@@ -33,7 +33,8 @@ enum SessionCommand {
         priority: Priority,
     },
     Stop,
-    NotifyPlaybackEnd, // for actor internal usage
+    Leave, // user intentionally disconnected by command
+    Disconnect, // internal usage: Songbird drive
 }
 
 #[derive(Debug, Clone)]
@@ -58,6 +59,11 @@ impl SessionHandle {
 
     pub async fn stop(&self) -> anyhow::Result<()> {
         self.tx.send(SessionCommand::Stop).await?;
+        Ok(())
+    }
+
+    pub async fn leave(&self) -> anyhow::Result<()> {
+        self.tx.send(SessionCommand::Leave).await?;
         Ok(())
     }
 }
