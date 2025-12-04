@@ -43,6 +43,11 @@ async fn main() -> anyhow::Result<()> {
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
+            commands: vec![
+                command::moderation::register(),
+                command::session::join(),
+                command::session::leave(),
+            ],
             event_handler: |ctx, event, framework, data| {
                 Box::pin(event_handler(ctx, event, framework, data))
             },
