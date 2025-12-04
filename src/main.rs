@@ -8,9 +8,9 @@ use tracing::info;
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::{ChannelId, GatewayIntents, GuildId};
 use songbird::SerenityInit;
-use text_to_speech_rs::handler;
 use text_to_speech_rs::handler::event_handler;
 use text_to_speech_rs::session::manager::SessionManager;
+use text_to_speech_rs::{command, handler};
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -23,11 +23,6 @@ async fn main() -> anyhow::Result<()> {
 
     let config = load_config("config.toml")
         .context("Failed to load config.toml")?;
-
-    // just for test usage and should be rewritten soon.
-    let guild_id = GuildId::new(env::var("TTSBOT_TMP_GUILD_ID").expect("Guild ID must be set").parse().expect("Should be an integer"));
-    let connect_to = ChannelId::new(env::var("TTSBOT_TMP_VOICE_CHANNEL_ID").expect("Voice Channel ID must be set").parse().expect("Should be an integer"));
-    let reading = ChannelId::new(env::var("TTSBOT_TMP_READING_CHANNEL_ID").expect("Reading Channel ID must be set").parse().expect("Should be an integer"));
 
     info!("Loaded config");
 
@@ -58,9 +53,6 @@ async fn main() -> anyhow::Result<()> {
                 Ok(handler::Data {
                     session_manager: SessionManager::new(),
                     registry,
-                    tmp_guild_id: guild_id,
-                    tmp_voice_channel_id: connect_to,
-                    tmp_reading_channel_id: reading,
                 })
             })
         })
