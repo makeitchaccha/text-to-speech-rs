@@ -178,9 +178,9 @@ impl SessionActor {
                             tracing::warn!("worker lagged, skip {} commands", count);
                             continue;
                         },
-                        Err(err) => {
-                            tracing::error!("worker error: {}", err);
-                            continue;
+                        Err(broadcast::error::RecvError::Closed) => {
+                            tracing::info!("worker closed");
+                            break;
                         }
                     }
                 }
