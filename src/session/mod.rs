@@ -5,7 +5,6 @@ use tokio::sync::mpsc;
 
 pub mod actor;
 pub mod manager;
-mod sanitizer;
 pub mod driver;
 
 #[derive(Clone, Copy)]

@@ -1,5 +1,4 @@
 use crate::session::driver::AudioDriver;
-use crate::session::sanitizer::sanitize;
 use crate::session::{Priority, SessionCommand, SessionHandle, Speaker};
 use crate::tts::Voice;
 use poise::serenity_prelude::UserId;
@@ -60,10 +59,8 @@ impl SessionActor {
         while let Some(cmd) = self.rx.recv().await {
             match cmd {
                 SessionCommand::Speak { text, voice, speaker, priority } => {
-                    let clean_text = sanitize(&text, 300);
-
                     let command = WorkerCommand::GenerateAndPlay(GenerateAndPlay {
-                        text: clean_text,
+                        text,
                         speaker,
                         voice,
                     });

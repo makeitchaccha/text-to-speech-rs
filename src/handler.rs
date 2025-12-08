@@ -4,6 +4,7 @@ use crate::tts::registry::VoiceRegistry;
 use anyhow::Context;
 use poise::serenity_prelude as serenity;
 use crate::profile::resolver::ProfileResolver;
+use crate::sanitizer;
 
 pub struct Data{
     pub session_manager: SessionManager,
@@ -55,12 +56,16 @@ pub async fn event_handler(
                     .get(profile_str)
                     .ok_or_else(|| anyhow::anyhow!("No voice preset found"))?;
 
+                let guild_id = new_message.guild_id.ok_or(anyhow::anyhow!("Message does not contain guild ID"))?;
+
                 let text = new_message.content.clone();
+                let text = sanitizer::replace_mentions(&text, ctx, guild_id, &new_message.mentions, &new_message.mention_roles, &new_message.mention_channels)?;
+                let text = sanitizer::sanitize(&text, 300);
 
                 if let Err(err) = handle.speak(text, voice, Speaker::new(new_message.author.id, new_message.author.display_name().to_string())).await.context("failed to send message") {
                     tracing::error!("Error sending message: {:?}", err);
                     // lazy delete
-                    data.session_manager.remove(new_message.guild_id.ok_or(anyhow::anyhow!("Message does not contain guild ID"))?);
+                    data.session_manager.remove(guild_id);
                 }
             }
         }
