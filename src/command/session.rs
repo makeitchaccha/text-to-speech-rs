@@ -37,7 +37,14 @@ pub async fn join(ctx: Context<'_>) -> Result<()> {
 
     ctx.data().session_manager.register(guild_id, ctx.channel_id(), handle.clone());
 
-    let voice = ctx.data().registry.get("wavenet-a").unwrap();
+    let profile = ctx.data().resolver.resolve_guild_with_fallback(guild_id).await;
+
+    let profile_str = match &profile {
+        Ok(profile) => profile.as_ref(),
+        Err(_) => ctx.data().resolver.fallback()
+    };
+
+    let voice = ctx.data().registry.get(profile_str).unwrap();
     handle.announce("読み上げを開始します".to_string(), voice).await?;
 
     ctx.say(format!("Now, I'm reading {} in {}", ctx.channel_id().mention(), channel_id.mention())).await?;

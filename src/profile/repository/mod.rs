@@ -1,7 +1,7 @@
 #[cfg(feature = "sqlite")]
-mod sqlite;
+pub mod sqlite;
 #[cfg(feature = "postgres")]
-mod postgres;
+pub mod postgres;
 
 use anyhow::Result;
 use async_trait::async_trait;

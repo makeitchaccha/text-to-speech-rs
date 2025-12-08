@@ -48,7 +48,7 @@ prepare: dbs-up migrate
     @echo " -> [3/3] Merging metadata..."
     mv .sqlx_tmp/*.json -t .sqlx
     rmdir .sqlx_tmp
-    @echo "✅ Cache generation successful! (sqlx-data.json updated)."
+    @echo "✅ Cache generation successful!"
 
 reset: dbs-down
     @echo "🧹 Cleaning up..."

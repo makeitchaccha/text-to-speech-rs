@@ -31,6 +31,10 @@ impl ProfileResolver {
 
         Ok(self.fallback_profile_id.clone())
     }
+
+    pub fn fallback(&self) -> &str {
+        &self.fallback_profile_id
+    }
 }
 
 #[cfg(test)]

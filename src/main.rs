@@ -1,16 +1,20 @@
 use anyhow::Context;
 use google_cloud_texttospeech_v1::client::TextToSpeech;
-use std::env;
-use text_to_speech_rs::config::load_config;
-use text_to_speech_rs::tts::registry::VoiceRegistry;
-use tracing::info;
-
 use poise::serenity_prelude as serenity;
-use poise::serenity_prelude::{ChannelId, GatewayIntents, GuildId};
+use poise::serenity_prelude::GatewayIntents;
 use songbird::SerenityInit;
+use sqlx::{Pool, Postgres, Sqlite};
+use std::sync::Arc;
+use text_to_speech_rs::config::{load_config, DatabaseConfig, DatabaseKind};
 use text_to_speech_rs::handler::event_handler;
+use text_to_speech_rs::profile::repository::postgres::PostgresRepository;
+use text_to_speech_rs::profile::repository::sqlite::SQLiteProfileRepository;
+use text_to_speech_rs::profile::repository::ProfileRepository;
+use text_to_speech_rs::profile::resolver::ProfileResolver;
 use text_to_speech_rs::session::manager::SessionManager;
+use text_to_speech_rs::tts::registry::VoiceRegistry;
 use text_to_speech_rs::{command, handler};
+use tracing::info;
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -23,6 +27,8 @@ async fn main() -> anyhow::Result<()> {
 
     let config = load_config("config.toml")
         .context("Failed to load config.toml")?;
+
+    config.verify()?;
 
     info!("Loaded config");
 
@@ -41,6 +47,10 @@ async fn main() -> anyhow::Result<()> {
 
     info!("VoiceRegistry built successfully.");
 
+    let repository = prepare_repository(&config.database).await?;
+
+    let resolver = ProfileResolver::new(repository, config.bot.global_profile.clone());
+
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![
@@ -58,6 +68,7 @@ async fn main() -> anyhow::Result<()> {
                 Ok(handler::Data {
                     session_manager: SessionManager::new(),
                     registry,
+                    resolver,
                 })
             })
         })
@@ -71,4 +82,29 @@ async fn main() -> anyhow::Result<()> {
     client.start().await?;
 
     Ok(())
+}
+
+async fn prepare_repository(config: &DatabaseConfig) -> anyhow::Result<Arc<dyn ProfileRepository>> {
+    match config.kind {
+        DatabaseKind::SQLite => {
+            #[cfg(feature = "sqlite")]
+            {
+                info!("Opening SQLite database...");
+                let pool: Pool<Sqlite> = sqlx::SqlitePool::connect(&config.url).await?;
+                Ok(Arc::new(SQLiteProfileRepository::new(pool)))
+            }
+            #[cfg(not(feature = "sqlite"))]
+            anyhow::bail!("SQLite selected, but 'sqlite' feature is not enabled.")
+        },
+        DatabaseKind::Postgres => {
+            #[cfg(feature = "postgres")]
+            {
+                info!("Connecting to PostgreSQL...");
+                let pool: Pool<Postgres> = sqlx::PgPool::connect(&config.url).await?;
+                Ok(Arc::new(PostgresRepository::new(pool)))
+            }
+            #[cfg(not(feature = "postgres"))]
+            anyhow::bail!("PostgreSQL selected, but 'postgres' feature is not enabled.")
+        }
+    }
 }

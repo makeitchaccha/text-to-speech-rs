@@ -18,17 +18,48 @@ pub fn load_config(path: &str) -> anyhow::Result<AppConfig> {
 pub struct AppConfig {
     pub bot: BotConfig,
 
+    pub database: DatabaseConfig,
+
     #[serde(default)]
     pub backend: BackendConfig,
 
     pub cache: CacheConfig,
 
-    pub presets: HashMap<String, PresetConfig>,
+    pub profiles: HashMap<String, ProfileConfig>,
+}
+
+impl AppConfig {
+    pub fn verify(&self) -> anyhow::Result<()> {
+        if self.bot.token.is_empty() {
+            return Err(anyhow!("bot token is empty"))
+        }
+
+        if !self.profiles.contains_key(&self.bot.global_profile) {
+            return Err(anyhow!("No profile matched for {}, specified for global_profile", &self.bot.global_profile))
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct BotConfig {
+    pub token: String,
+    pub global_profile: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct BotConfig {
-    pub token: String
+pub enum DatabaseKind{
+    #[serde(rename = "postgres")]
+    Postgres,
+    #[serde(rename = "sqlite")]
+    SQLite,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DatabaseConfig {
+    pub kind: DatabaseKind,
+    pub url: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
@@ -60,7 +91,7 @@ pub struct InMemoryCacheConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "backend")]
-pub enum PresetConfig {
+pub enum ProfileConfig {
     #[serde(rename="google_cloud")]
     GoogleCloudVoice(GoogleCloudVoiceConfig),
 }

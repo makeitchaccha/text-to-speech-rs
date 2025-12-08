@@ -1,4 +1,4 @@
-use crate::config::{AppConfig, CacheConfig, PresetConfig};
+use crate::config::{AppConfig, CacheConfig, ProfileConfig};
 use crate::tts::cache::CachedVoice;
 use crate::tts::google_cloud::GoogleCloudVoice;
 use crate::tts::Voice;
@@ -59,9 +59,9 @@ impl VoiceRegistryBuilder {
     pub fn build(self) -> anyhow::Result<VoiceRegistry> {
         let mut voices = HashMap::new();
 
-        for (id, preset) in &self.config.presets {
+        for (id, preset) in &self.config.profiles {
             let voice: Arc<dyn Voice> = match preset {
-                PresetConfig::GoogleCloudVoice(c) => {
+                ProfileConfig::GoogleCloudVoice(c) => {
                     let client = self.google_cloud.as_ref()
                         .with_context(|| format!(
                             "Preset '{}' requires Google Cloud backend, but it is not configured. Please verify that [backend.google_cloud] exists and 'enabled = true' in config.toml.",
@@ -90,14 +90,14 @@ impl VoiceRegistryBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{BotConfig, CacheConfig, InMemoryCacheConfig};
+    use crate::config::{BotConfig, CacheConfig, DatabaseConfig, DatabaseKind, InMemoryCacheConfig};
     use crate::tts::google_cloud::GoogleCloudVoiceConfig;
 
     fn create_test_config(cache: CacheConfig) -> AppConfig {
         let mut presets = HashMap::new();
         presets.insert(
             "test_preset".to_string(),
-            PresetConfig::GoogleCloudVoice(GoogleCloudVoiceConfig {
+            ProfileConfig::GoogleCloudVoice(GoogleCloudVoiceConfig {
                 language_code: "ja-JP".to_string(),
                 name: Some("ja-JP-Wavenet-A".to_string()),
                 ..Default::default()
@@ -105,12 +105,14 @@ mod tests {
         );
 
         AppConfig {
-            bot: BotConfig {
-                token: "dummy_token".to_string(),
+            bot: Default::default(),
+            database: DatabaseConfig{
+                kind: DatabaseKind::SQLite,
+                url: "".to_string(),
             },
             backend: Default::default(),
             cache,
-            presets,
+            profiles: presets,
         }
     }
 

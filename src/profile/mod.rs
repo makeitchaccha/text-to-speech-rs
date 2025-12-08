@@ -1,5 +1,5 @@
-mod repository;
-mod resolver;
+pub mod repository;
+pub mod resolver;
 
 #[cfg(test)]
 mod test_utils{

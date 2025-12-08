@@ -3,10 +3,12 @@ use crate::session::Speaker;
 use crate::tts::registry::VoiceRegistry;
 use anyhow::Context;
 use poise::serenity_prelude as serenity;
+use crate::profile::resolver::ProfileResolver;
 
 pub struct Data{
     pub session_manager: SessionManager,
     pub registry: VoiceRegistry,
+    pub resolver: ProfileResolver
 }
 
 pub async fn event_handler(
@@ -42,8 +44,15 @@ pub async fn event_handler(
             }
 
             if let Some(handle) = data.session_manager.get_by_text_channel(new_message.channel_id) {
+                let profile = data.resolver.resolve_with_fallback(new_message.author.id, new_message.guild_id.ok_or(anyhow::anyhow!("Guild not found"))?).await;
+
+                let profile_str = match &profile {
+                    Ok(profile) => profile.as_str(),
+                    Err(_) => data.resolver.fallback(),
+                };
+
                 let voice = data.registry
-                    .get("wavenet-a")
+                    .get(profile_str)
                     .ok_or_else(|| anyhow::anyhow!("No voice preset found"))?;
 
                 let text = new_message.content.clone();
