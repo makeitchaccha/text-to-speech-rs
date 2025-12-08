@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM user_profiles WHERE user_id = $1 -- postgres",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b962c1f09db2452da67576f2d3251b554204ff4a207900e641a5ab237f4746b8"
+}

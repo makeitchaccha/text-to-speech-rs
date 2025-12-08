@@ -16,15 +16,15 @@ impl ProfileResolver {
         }
     }
 
-    pub async fn resolve(&self, user_id: UserId, guild_id: GuildId) -> Result<String> {
-        if let Some(profile_id) = self.repository.find_by_user(user_id).await? {
+    pub async fn resolve_with_fallback(&self, user_id: UserId, guild_id: GuildId) -> Result<String> {
+        if let Some(profile_id) = self.repository.find_highest_priority(user_id, guild_id).await? {
             return Ok(profile_id);
         }
 
-        self.resolve_guild(guild_id).await
+        Ok(self.fallback_profile_id.clone())
     }
 
-    pub async fn resolve_guild(&self, guild_id: GuildId) -> Result<String> {
+    pub async fn resolve_guild_with_fallback(&self, guild_id: GuildId) -> Result<String> {
         if let Some(profile_id) = self.repository.find_by_guild(guild_id).await? {
             return Ok(profile_id);
         }
@@ -70,7 +70,7 @@ mod tests {
             .with_user_profile(1, "user-P").await
             .with_guild_profile(1, "guild-P").await;
 
-        let result = ctx.resolver.resolve(UserId::from(1), GuildId::from(1)).await.unwrap();
+        let result = ctx.resolver.resolve_with_fallback(UserId::from(1), GuildId::from(1)).await.unwrap();
 
         assert_eq!(result, "user-P");
     }
@@ -81,7 +81,7 @@ mod tests {
             .with_guild_profile(1, "guild-P")
             .await;
 
-        let result = ctx.resolver.resolve(UserId::from(1), GuildId::from(1)).await.unwrap();
+        let result = ctx.resolver.resolve_with_fallback(UserId::from(1), GuildId::from(1)).await.unwrap();
 
         assert_eq!(result, "guild-P");
     }
@@ -90,7 +90,7 @@ mod tests {
     async fn returns_fallback_if_nothing_configured() {
         let ctx = TestContext::new();
 
-        let result = ctx.resolver.resolve(UserId::from(1), GuildId::from(1)).await.unwrap();
+        let result = ctx.resolver.resolve_with_fallback(UserId::from(1), GuildId::from(1)).await.unwrap();
 
         assert_eq!(result, "fallback-profile");
     }

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_profiles(user_id, profile_id) VALUES($1, $2) ON CONFLICT (user_id) DO UPDATE SET profile_id = EXCLUDED.profile_id -- postgres",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2524f882402076c3354558a2edc117f35d2172736063618f04a74e5c07d34c6f"
+}

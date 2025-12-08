@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT profile_id FROM user_profiles WHERE user_id = ? -- sqlite",
+  "describe": {
+    "columns": [
+      {
+        "name": "profile_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f2c12497e36b76e6a0c9f5d3647c3334e4f230239abe8d290687d183bcdd67ea"
+}

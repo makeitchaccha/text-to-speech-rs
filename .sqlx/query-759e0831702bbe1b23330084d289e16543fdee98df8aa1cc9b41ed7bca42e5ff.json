@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO guild_profiles(guild_id, profile_id) VALUES($1, $2) ON CONFLICT (guild_id) DO UPDATE SET profile_id = EXCLUDED.profile_id -- postgres",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "759e0831702bbe1b23330084d289e16543fdee98df8aa1cc9b41ed7bca42e5ff"
+}

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT profile_id FROM guild_profiles WHERE guild_id = ? -- sqlite",
+  "describe": {
+    "columns": [
+      {
+        "name": "profile_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d7656ee160a146b07b18e426ad2d8296d4803a1028bf7c07dbcd94f5ad198e57"
+}

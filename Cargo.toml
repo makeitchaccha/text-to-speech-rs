@@ -3,6 +3,12 @@ name = "text-to-speech-rs"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["sqlite", "postgres"]
+
+sqlite = []
+postgres = []
+
 [dependencies]
 anyhow = "1.0.100"
 async-trait = "0.1.89"
@@ -21,3 +27,4 @@ dashmap = "6.1.0"
 symphonia = { version = "0.5.5", features = ["all"] }
 config = "0.15.19"
 regex = "1.12.2"
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite", "postgres"] }

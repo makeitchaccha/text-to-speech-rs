@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO user_profiles(user_id, profile_id) VALUES(?, ?) ON CONFLICT (user_id) DO UPDATE SET profile_id = EXCLUDED.profile_id -- sqlite",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "45b5776a4a2ec65e706dfd73a47559ba3fe6ab6e232703b0c63c764100f6a74d"
+}
