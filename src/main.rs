@@ -49,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
 
     let repository = prepare_repository(&config.database).await?;
 
-    let resolver = ProfileResolver::new(repository, config.bot.global_profile.clone());
+    let resolver = ProfileResolver::new(repository.clone(), config.bot.global_profile.clone());
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
@@ -57,6 +57,7 @@ async fn main() -> anyhow::Result<()> {
                 command::moderation::register(),
                 command::session::join(),
                 command::session::leave(),
+                command::profile::voice()
             ],
             event_handler: |ctx, event, framework, data| {
                 Box::pin(event_handler(ctx, event, framework, data))
@@ -69,6 +70,7 @@ async fn main() -> anyhow::Result<()> {
                     session_manager: SessionManager::new(),
                     registry,
                     resolver,
+                    repository
                 })
             })
         })

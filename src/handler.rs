@@ -1,15 +1,18 @@
+use std::sync::Arc;
 use crate::session::manager::SessionManager;
 use crate::session::Speaker;
 use crate::tts::registry::VoiceRegistry;
 use anyhow::Context;
 use poise::serenity_prelude as serenity;
+use crate::profile::repository::ProfileRepository;
 use crate::profile::resolver::ProfileResolver;
 use crate::sanitizer;
 
 pub struct Data{
     pub session_manager: SessionManager,
     pub registry: VoiceRegistry,
-    pub resolver: ProfileResolver
+    pub resolver: ProfileResolver,
+    pub repository: Arc<dyn ProfileRepository>,
 }
 
 pub async fn event_handler(
