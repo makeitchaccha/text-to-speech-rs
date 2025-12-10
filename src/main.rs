@@ -7,8 +7,6 @@ use sqlx::{Pool, Postgres, Sqlite};
 use std::sync::Arc;
 use text_to_speech_rs::config::{load_config, DatabaseConfig, DatabaseKind};
 use text_to_speech_rs::handler::event_handler;
-use text_to_speech_rs::profile::repository::postgres::PostgresRepository;
-use text_to_speech_rs::profile::repository::sqlite::SQLiteProfileRepository;
 use text_to_speech_rs::profile::repository::ProfileRepository;
 use text_to_speech_rs::profile::resolver::ProfileResolver;
 use text_to_speech_rs::session::manager::SessionManager;
@@ -91,6 +89,7 @@ async fn prepare_repository(config: &DatabaseConfig) -> anyhow::Result<Arc<dyn P
         DatabaseKind::SQLite => {
             #[cfg(feature = "sqlite")]
             {
+                use text_to_speech_rs::profile::repository::sqlite::SQLiteProfileRepository;
                 info!("Opening SQLite database...");
                 let pool: Pool<Sqlite> = sqlx::SqlitePool::connect(&config.url).await?;
                 Ok(Arc::new(SQLiteProfileRepository::new(pool)))
@@ -101,6 +100,7 @@ async fn prepare_repository(config: &DatabaseConfig) -> anyhow::Result<Arc<dyn P
         DatabaseKind::Postgres => {
             #[cfg(feature = "postgres")]
             {
+                use text_to_speech_rs::profile::repository::postgres::PostgresRepository;
                 info!("Connecting to PostgreSQL...");
                 let pool: Pool<Postgres> = sqlx::PgPool::connect(&config.url).await?;
                 Ok(Arc::new(PostgresRepository::new(pool)))

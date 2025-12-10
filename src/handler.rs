@@ -51,7 +51,7 @@ pub async fn event_handler(
                 let profile = data.resolver.resolve_with_fallback(new_message.author.id, new_message.guild_id.ok_or(anyhow::anyhow!("Guild not found"))?).await;
 
                 let profile_str = match &profile {
-                    Ok(profile) => profile.as_str(),
+                    Ok(profile) => profile.id.as_str(),
                     Err(_) => data.resolver.fallback(),
                 };
 

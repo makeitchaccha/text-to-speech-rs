@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use poise::serenity_prelude::{GuildId, UserId};
 use sqlx::SqlitePool;
 use crate::profile::repository::ProfileRepository;
+use crate::profile::ResolvedProfile;
 
 pub struct SQLiteProfileRepository {
     pool: SqlitePool
@@ -37,19 +38,32 @@ impl ProfileRepository for SQLiteProfileRepository {
         Ok(record.map(|record| record.profile_id))
     }
 
-    async fn find_highest_priority(&self, user_id: UserId, guild_id: GuildId) -> anyhow::Result<Option<String>> {
+    async fn find_highest_priority(&self, user_id: UserId, guild_id: GuildId) -> anyhow::Result<Option<ResolvedProfile>> {
         let user_id = user_id.to_string();
         let guild_id = guild_id.to_string();
         let record = sqlx::query!(
-                r#"SELECT CAST(COALESCE(
-                    (SELECT profile_id FROM user_profiles WHERE user_id = ?),
-                    (SELECT profile_id FROM guild_profiles WHERE guild_id = ?)
-                ) AS TEXT) as profile_id -- sqlite"#,
+                r#"
+                SELECT 0 AS "source_id!: i64", profile_id FROM user_profiles WHERE user_id = ?
+                UNION ALL
+                SELECT 1 AS "source_id!: i64", profile_id FROM guild_profiles WHERE guild_id = ?
+                ORDER BY "source_id!: i64" ASC -- 0 (User) takes precedence over 1 (Guild)
+                LIMIT 1 -- sqlite"#,
                 user_id,
                 guild_id
             ).fetch_optional(&self.pool).await?;
 
-        Ok(record.and_then(|r| r.profile_id))
+        match record {
+            None => Ok(None),
+            Some(record) => {
+                let source_id = record.source_id;
+                let profile_id = record.profile_id;
+                match source_id {
+                    0 => Ok(Some(ResolvedProfile::user_override(profile_id))),
+                    1 => Ok(Some(ResolvedProfile::guild_default(profile_id))),
+                    _ => Err(anyhow::anyhow!("no profile found"))
+                }
+            }
+        }
     }
 
     async fn save_user(&self, user_id: UserId, profile_id: &str) -> anyhow::Result<()> {

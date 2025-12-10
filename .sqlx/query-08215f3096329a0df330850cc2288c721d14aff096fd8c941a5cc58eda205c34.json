@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT 0 AS source_id, profile_id FROM user_profiles WHERE user_id = $1\n                UNION ALL\n                SELECT 1 AS source_id, profile_id FROM guild_profiles WHERE guild_id = $2\n                ORDER BY source_id ASC -- 0 (User) takes precedence over 1 (Guild)\n                LIMIT 1 -- postgres",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "source_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "profile_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "08215f3096329a0df330850cc2288c721d14aff096fd8c941a5cc58eda205c34"
+}

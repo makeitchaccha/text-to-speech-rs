@@ -1,5 +1,44 @@
+use std::fmt::{Display, Formatter};
+
 pub mod repository;
 pub mod resolver;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ProfileSource {
+    UserOverride,
+    GuildDefault,
+    GlobalFallback,
+}
+
+impl Display for ProfileSource {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UserOverride => write!(f, "User Override"),
+            Self::GuildDefault => write!(f, "Guild Default"),
+            Self::GlobalFallback => write!(f, "Global Fallback"),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedProfile {
+    pub id: String,
+    pub source: ProfileSource,
+}
+
+impl ResolvedProfile {
+    pub fn user_override(id: String) -> Self {
+        Self { id, source: ProfileSource::UserOverride }
+    }
+
+    pub fn guild_default(id: String) -> Self {
+        Self { id, source: ProfileSource::GuildDefault }
+    }
+
+    pub fn global_fallback(id: String) -> Self {
+        Self { id, source: ProfileSource::GlobalFallback }
+    }
+}
 
 #[cfg(test)]
 mod test_utils{

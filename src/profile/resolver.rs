@@ -2,6 +2,7 @@ use crate::profile::repository::ProfileRepository;
 use anyhow::Result;
 use std::sync::Arc;
 use poise::serenity_prelude::{GuildId, UserId};
+use crate::profile::ResolvedProfile;
 
 pub struct ProfileResolver{
     repository: Arc<dyn ProfileRepository>,
@@ -16,20 +17,20 @@ impl ProfileResolver {
         }
     }
 
-    pub async fn resolve_with_fallback(&self, user_id: UserId, guild_id: GuildId) -> Result<String> {
+    pub async fn resolve_with_fallback(&self, user_id: UserId, guild_id: GuildId) -> Result<ResolvedProfile> {
         if let Some(profile_id) = self.repository.find_highest_priority(user_id, guild_id).await? {
             return Ok(profile_id);
         }
 
-        Ok(self.fallback_profile_id.clone())
+        Ok(ResolvedProfile::global_fallback(self.fallback_profile_id.clone()))
     }
 
-    pub async fn resolve_guild_with_fallback(&self, guild_id: GuildId) -> Result<String> {
+    pub async fn resolve_guild_with_fallback(&self, guild_id: GuildId) -> Result<ResolvedProfile> {
         if let Some(profile_id) = self.repository.find_by_guild(guild_id).await? {
-            return Ok(profile_id);
+            return Ok(ResolvedProfile::guild_default(self.fallback_profile_id.clone()));
         }
 
-        Ok(self.fallback_profile_id.clone())
+        Ok(ResolvedProfile::global_fallback(self.fallback_profile_id.clone()))
     }
 
     pub fn fallback(&self) -> &str {
@@ -39,6 +40,7 @@ impl ProfileResolver {
 
 #[cfg(test)]
 mod tests {
+    use crate::profile::ProfileSource;
     use crate::profile::test_utils::MockProfileRepository;
     use super::*;
 
@@ -76,7 +78,8 @@ mod tests {
 
         let result = ctx.resolver.resolve_with_fallback(UserId::from(1), GuildId::from(1)).await.unwrap();
 
-        assert_eq!(result, "user-P");
+        assert_eq!(result.source, ProfileSource::UserOverride);
+        assert_eq!(result.id, "user-P");
     }
 
     #[tokio::test]
@@ -87,7 +90,8 @@ mod tests {
 
         let result = ctx.resolver.resolve_with_fallback(UserId::from(1), GuildId::from(1)).await.unwrap();
 
-        assert_eq!(result, "guild-P");
+        assert_eq!(result.source, ProfileSource::GuildDefault);
+        assert_eq!(result.id, "guild-P");
     }
 
     #[tokio::test]
@@ -96,6 +100,7 @@ mod tests {
 
         let result = ctx.resolver.resolve_with_fallback(UserId::from(1), GuildId::from(1)).await.unwrap();
 
-        assert_eq!(result, "fallback-profile");
+        assert_eq!(result.source, ProfileSource::GlobalFallback);
+        assert_eq!(result.id, "fallback-profile");
     }
 }

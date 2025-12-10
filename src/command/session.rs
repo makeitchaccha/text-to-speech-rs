@@ -40,7 +40,7 @@ pub async fn join(ctx: Context<'_>) -> Result<()> {
     let profile = ctx.data().resolver.resolve_guild_with_fallback(guild_id).await;
 
     let profile_str = match &profile {
-        Ok(profile) => profile.as_ref(),
+        Ok(profile) => profile.id.as_str(),
         Err(_) => ctx.data().resolver.fallback()
     };
 

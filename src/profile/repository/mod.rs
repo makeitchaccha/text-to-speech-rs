@@ -6,6 +6,7 @@ pub mod postgres;
 use anyhow::Result;
 use async_trait::async_trait;
 use poise::serenity_prelude::{GuildId, UserId};
+use crate::profile::ResolvedProfile;
 
 #[async_trait]
 pub trait ProfileRepository: Send + Sync {
@@ -15,15 +16,15 @@ pub trait ProfileRepository: Send + Sync {
     /// for document purpose implementation for find profile id
     /// concrete repository may implement more efficient procedures
     /// such as oneliner query for priority order.
-    async fn find_highest_priority(&self, user_id: UserId, guild_id: GuildId) -> Result<Option<String>> {
+    async fn find_highest_priority(&self, user_id: UserId, guild_id: GuildId) -> Result<Option<ResolvedProfile>> {
         // user first
         if let Some(profile_id) = self.find_by_user(user_id).await? {
-            return Ok(Some(profile_id));
+            return Ok(Some(ResolvedProfile::user_override(profile_id)));
         }
 
         // then guild
         if let Some(profile_id) = self.find_by_guild(guild_id).await? {
-            return Ok(Some(profile_id));
+            return Ok(Some(ResolvedProfile::guild_default(profile_id)));
         }
 
         Ok(None)
