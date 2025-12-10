@@ -1,0 +1,11 @@
+# project
+target
+Dockerfile
+.dockerignore
+
+# git
+.git
+.gitignore
+
+# idea
+.idea
