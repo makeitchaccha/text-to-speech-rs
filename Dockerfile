@@ -9,7 +9,7 @@ WORKDIR /app
 RUN cargo install cargo-chef
 COPY --from=planner /app/recipe.json recipe.json
 
-RUN apt update -y && apt install -y cmake
+RUN apt update -y && apt install -y cmake && rm -rf /var/lib/apt/lists/*
 
 RUN cargo chef cook --release --recipe-path recipe.json
 
