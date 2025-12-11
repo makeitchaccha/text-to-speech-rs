@@ -54,7 +54,9 @@ impl Locales {
         if let Some((language, _)) = locale.split_once('-') {
             candidates.push(language);
         }
-        candidates.push(self.fallback.as_str());
+        if !candidates.contains(&self.fallback.as_str()) {
+            candidates.push(self.fallback.as_str());
+        }
 
         for candidate in candidates {
             let bundle = match self.bundles.get(candidate) {
