@@ -90,7 +90,9 @@ mod tests {
     impl TestContext {
         fn new(fallback: &str, source: &str) -> Self {
             let mut bundles = HashMap::new();
-            let mut bundle = FluentBundle::new_concurrent(vec![]);
+            let mut bundle = FluentBundle::new_concurrent(
+                vec![fallback.parse().expect("must be valid")]
+            );
             bundle.add_resource(FluentResource::try_new(source.to_owned()).expect("must parse")).expect("must add resource");
             bundles.insert(fallback.to_owned(), bundle);
 
@@ -103,7 +105,9 @@ mod tests {
         }
 
         fn add_bundle(mut self, locale: &str, source: &str) -> Self{
-            let mut bundle = FluentBundle::new_concurrent(vec![]);
+            let mut bundle = FluentBundle::new_concurrent(
+                vec![locale.parse().expect("must be valid")]
+            );
             bundle.add_resource(FluentResource::try_new(source.to_owned()).expect("must parse")).expect("must add resource");
             self.locales.bundles.insert(locale.to_owned(), bundle);
             self
