@@ -20,7 +20,7 @@ impl Locales {
         Ok(Locales { fallback, bundles })
     }
 
-    pub fn resolve(&self, locale: &str, id: &str, args: Option<&FluentArgs>) -> Option<String> {
+    pub fn resolve(&self, locale: &str, id: &str, args: Option<&FluentArgs>) -> Result<String, Error> {
         let mut candidates = vec![locale];
 
         if let Some((language, _)) = locale.split_once('-') {
@@ -38,12 +38,12 @@ impl Locales {
                 Some(message) => message,
                 None => continue, // skips if no match
             };
-            let pattern = message.value()?;
+            let pattern = message.value().ok_or(anyhow!("pattern has no value for id '{}'", id))?;
             let formatted = bundle.format_pattern(pattern, args, &mut vec![]);
 
-            return Some(formatted.into_owned())
+            return Ok(formatted.into_owned())
         }
 
-        None
+        Err(anyhow!("no fallback found for id '{}'", id))
     }
 }
