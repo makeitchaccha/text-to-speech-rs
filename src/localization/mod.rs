@@ -3,15 +3,6 @@ use anyhow::anyhow;
 
 pub mod tts;
 
-macro_rules! args {
-    ( $(, $argname:ident: $argvalue:expr )* $(,)? ) => {{
-        #[allow(unused_mut)]
-        let mut args = fluent::FluentArgs::new();
-        $( args.set(stringify!($argname), $argvalue); )*
-        args
-    }};
-}
-
 type Error = anyhow::Error;
 type FluentBundle = fluent::bundle::FluentBundle<fluent::FluentResource, intl_memoizer::concurrent::IntlLangMemoizer>;
 
