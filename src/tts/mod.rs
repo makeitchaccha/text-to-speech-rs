@@ -25,6 +25,10 @@ pub enum VoiceError {
 pub trait Voice: Send + Sync{
     fn identifier(&self) -> &str;
 
+    /// Returns the language code associated with this voice.
+    ///
+    /// The language code should be in ISO 639-1 format (e.g., "en", "ja") or BCP 47 format (e.g., "en-US", "ja-JP"),
+    /// depending on the requirements of the localization system.
     fn language(&self) -> &str;
 
     async fn generate(&self, text: &str) -> Result<Vec<u8>, VoiceError>;
