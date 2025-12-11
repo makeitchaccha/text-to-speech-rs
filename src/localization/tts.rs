@@ -1,7 +1,34 @@
 use std::collections::HashMap;
 use anyhow::anyhow;
 use fluent::FluentArgs;
-use crate::localization::{read_ftl, Error, FluentBundle};
+use crate::localization::{Error, FluentBundle};
+use include_dir::{include_dir, Dir};
+
+const LOCALES: Dir = include_dir!("$CARGO_MANIFEST_DIR/locales/tts");
+
+pub fn load_from_static_dir(fallback: &str) -> Result<Locales, Error> {
+    let mut bundles = HashMap::new();
+
+    for file in LOCALES.files() {
+        let locale = file.path()
+            .file_stem().ok_or(anyhow!("Invalid file name: '{}'", file.path().display()))?
+            .to_str().ok_or(anyhow!("Invalid unicode filename"))?;
+
+        let resource = fluent::FluentResource::try_new(file.contents_utf8().ok_or(anyhow!("Invalid file contents"))?.to_owned())
+            .map_err(|(_, e)| anyhow!("failed to parse {:?}: {:?}", file.path(), e))?;
+
+        let mut bundle = FluentBundle::new_concurrent(vec![locale
+            .parse()
+            .map_err(|e| anyhow!("invalid locale `{}`: {}", locale, e))?]);
+        bundle
+            .add_resource(resource)
+            .map_err(|e| anyhow!("failed to add resource to bundle: {:?}", e))?;
+
+        bundles.insert(locale.to_owned(), bundle);
+    }
+
+    Locales::new_with_bundles(fallback.to_string(), bundles)
+}
 
 pub struct Locales {
     fallback: String,
@@ -9,19 +36,12 @@ pub struct Locales {
 }
 
 impl Locales {
-    /// Loads all Fluent bundles for TTS announcements from the specified directory.
-    ///
-    /// The `fallback` locale serves as the final resort for all TTS messages
-    /// when the requested profile locale is not available.
-    pub fn read_ftl(dir: &std::path::Path, fallback: String) -> Result<Self, Error> {
-        let bundles = read_ftl(dir)?;
-
-        // verify
+    pub fn new_with_bundles(fallback: String, bundles: HashMap<String, FluentBundle>) -> Result<Self, Error> {
         if !bundles.contains_key(&fallback) {
-            return Err(anyhow!("fallback {} not found", fallback));
+            return Err(anyhow!("fallback locale {} not found", fallback));
         }
 
-        Ok(Locales { fallback, bundles })
+        Ok(Self { fallback, bundles })
     }
 
     /// Resolves a localized message by searching through a cascading locale chain.

@@ -22,7 +22,7 @@ async fn main() -> anyhow::Result<()> {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    let tts_locales = tts::Locales::read_ftl("locales/tts".as_ref(), "en".to_string())?;
+    let tts_locales = tts::load_from_static_dir("en")?;
 
     info!("Starting text-to-speech bot");
 
