@@ -9,6 +9,10 @@ pub struct Locales {
 }
 
 impl Locales {
+    /// Loads all Fluent bundles for TTS announcements from the specified directory.
+    ///
+    /// The `fallback` locale serves as the final resort for all TTS messages
+    /// when the requested profile locale is not available.
     pub fn read_ftl(dir: &std::path::Path, fallback: String) -> Result<Self, Error> {
         let bundles = read_ftl(dir)?;
 
@@ -20,9 +24,13 @@ impl Locales {
         Ok(Locales { fallback, bundles })
     }
 
+    /// Resolves a localized message by searching through a cascading locale chain.
+    ///
+    /// For a given locale (e.g., "ja-JP") and a defined fallback (e.g., "en"),
+    /// the search candidates are prioritized as: ["ja-JP", "ja", "en"].
+    /// The first successfully resolved message is returned.
     pub fn resolve(&self, locale: &str, id: &str, args: Option<&FluentArgs>) -> Result<String, Error> {
         let mut candidates = vec![locale];
-
         if let Some((language, _)) = locale.split_once('-') {
             candidates.push(language);
         }
