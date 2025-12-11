@@ -68,7 +68,7 @@ impl Locales {
                 Some(message) => message,
                 None => continue, // skips if no match
             };
-            let pattern = message.value().ok_or(anyhow!("pattern has no value for id '{}'", id))?;
+            let pattern = message.value().ok_or(anyhow!("message '{}' exists but has no value pattern", id))?;
             let formatted = bundle.format_pattern(pattern, args, &mut vec![]);
 
             return Ok(formatted.into_owned())
