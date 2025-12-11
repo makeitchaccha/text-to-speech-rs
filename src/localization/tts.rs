@@ -1,8 +1,6 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 use anyhow::anyhow;
 use fluent::FluentArgs;
-use sqlx::encode::IsNull::No;
 use crate::localization::{read_ftl, Error, FluentBundle};
 
 pub struct Locales {
