@@ -104,7 +104,7 @@ mod tests {
             }
         }
 
-        fn add_bundle(mut self, locale: &str, source: &str) -> Self{
+        fn add_bundle(mut self, locale: &str, source: &str) -> Self {
             let mut bundle = FluentBundle::new_concurrent(
                 vec![locale.parse().expect("must be valid")]
             );
