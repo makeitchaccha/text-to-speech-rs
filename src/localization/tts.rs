@@ -160,6 +160,6 @@ mod tests {
 
         let result = ctx.locales.resolve("en-US", "no-key", None);
 
-        assert_eq!(result.is_err(), true);
+        assert!(result.is_err());
     }
 }
