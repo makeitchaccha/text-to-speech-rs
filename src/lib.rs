@@ -5,3 +5,4 @@ pub mod handler;
 pub mod command;
 pub mod profile;
 mod sanitizer;
+pub mod localization;
