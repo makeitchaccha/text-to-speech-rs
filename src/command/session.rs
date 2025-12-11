@@ -45,7 +45,8 @@ pub async fn join(ctx: Context<'_>) -> Result<()> {
     };
 
     let voice = ctx.data().registry.get(profile_str).unwrap();
-    handle.announce("読み上げを開始します".to_string(), voice).await?;
+
+    handle.announce(ctx.data().tts_locales.resolve(voice.language(), "launch", None)?, voice).await?;
 
     ctx.say(format!("Now, I'm reading {} in {}", ctx.channel_id().mention(), channel_id.mention())).await?;
 

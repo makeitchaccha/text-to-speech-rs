@@ -26,6 +26,10 @@ impl Voice for CachedVoice {
         &self.identifier
     }
 
+    fn language(&self) -> &str {
+        self.inner.language()
+    }
+
     async fn generate(&self, text: &str) -> Result<Vec<u8>, VoiceError> {
         tracing::debug!("cached-voice requested to generate: {}", text);
         let key = hex::encode(sha2::Sha256::new().chain(self.identifier.as_bytes()).chain(text.as_bytes()).finalize());
