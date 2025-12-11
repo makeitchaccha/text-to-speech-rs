@@ -77,3 +77,85 @@ impl Locales {
         Err(anyhow!("no fallback found for id '{}'", id))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use fluent::FluentResource;
+    use super::*;
+
+    struct TestContext {
+        locales: Locales,
+    }
+
+    impl TestContext {
+        fn new(fallback: &str, source: &str) -> Self {
+            let mut bundles = HashMap::new();
+            let mut bundle = FluentBundle::new_concurrent(vec![]);
+            bundle.add_resource(FluentResource::try_new(source.to_owned()).expect("must parse")).expect("must add resource");
+            bundles.insert(fallback.to_owned(), bundle);
+
+            Self{
+                locales: Locales{
+                    fallback: fallback.to_owned(),
+                    bundles,
+                }
+            }
+        }
+
+        fn add_bundle(mut self, locale: &str, source: &str) -> Self{
+            let mut bundle = FluentBundle::new_concurrent(vec![]);
+            bundle.add_resource(FluentResource::try_new(source.to_owned()).expect("must parse")).expect("must add resource");
+            self.locales.bundles.insert(locale.to_owned(), bundle);
+            self
+        }
+    }
+
+
+    #[test]
+    fn resolve_exact_one_first_if_key_existing() {
+        let ctx =
+            TestContext::new("fallback", "key = value-fallback")
+                .add_bundle("en", "key = value-en")
+                .add_bundle("en-US", "key = value-en-US");
+
+        let result = ctx.locales.resolve("en-US", "key", None);
+
+        assert_eq!(result.ok(), Some("value-en-US".into()));
+    }
+
+    #[test]
+    fn resolve_prefixed_one_second_if_key_existing() {
+        let ctx =
+            TestContext::new("fallback", "key = value-fallback")
+                .add_bundle("en", "key = value-en")
+                .add_bundle("en-US", "key = value-en-US");
+
+        let result = ctx.locales.resolve("en-GB", "key", None);
+
+        assert_eq!(result.ok(), Some("value-en".into()));
+    }
+
+    #[test]
+    fn resolve_fallback_finally_if_key_existing() {
+        let ctx =
+            TestContext::new("fallback", "key = value-fallback")
+                .add_bundle("en", "key = value-en")
+                .add_bundle("en-US", "key = value-en-US");
+
+        let result = ctx.locales.resolve("ja", "key", None);
+
+        assert_eq!(result.ok(), Some("value-fallback".into()));
+    }
+
+    #[test]
+    fn fail_to_resolve_if_nonexistent_key() {
+        let ctx =
+            TestContext::new("fallback", "key = value-fallback")
+                .add_bundle("en", "key = value-en")
+                .add_bundle("en-US", "key = value-en-US");
+
+        let result = ctx.locales.resolve("en-US", "no-key", None);
+
+        assert_eq!(result.is_err(), true);
+    }
+}
