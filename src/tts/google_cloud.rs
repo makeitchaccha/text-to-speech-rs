@@ -123,6 +123,10 @@ impl Voice for GoogleCloudVoice {
         self.identifier.as_str()
     }
 
+    fn language(&self) -> &str {
+        self.voice_selection_params.language_code.as_str()
+    }
+
     async fn generate(&self, text: &str) -> Result<Vec<u8>, VoiceError> {
         tracing::debug!("google cloud voice requested to generate: {}", text);
         let response =

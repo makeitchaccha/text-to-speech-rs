@@ -25,6 +25,8 @@ pub enum VoiceError {
 pub trait Voice: Send + Sync{
     fn identifier(&self) -> &str;
 
+    fn language(&self) -> &str;
+
     async fn generate(&self, text: &str) -> Result<Vec<u8>, VoiceError>;
 }
 
@@ -54,6 +56,10 @@ pub mod test_utils {
     impl Voice for MockVoice {
         fn identifier(&self) -> &str {
             "mock"
+        }
+        
+        fn language(&self) -> &str {
+            "mock-language"
         }
 
         async fn generate(&self, text: &str) -> Result<Vec<u8>, VoiceError> {
