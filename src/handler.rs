@@ -7,12 +7,14 @@ use poise::serenity_prelude as serenity;
 use crate::profile::repository::ProfileRepository;
 use crate::profile::resolver::ProfileResolver;
 use crate::sanitizer;
+use crate::localization::tts;
 
 pub struct Data{
     pub session_manager: SessionManager,
     pub registry: VoiceRegistry,
     pub resolver: ProfileResolver,
     pub repository: Arc<dyn ProfileRepository>,
+    pub tts_locales: tts::Locales
 }
 
 pub async fn event_handler(

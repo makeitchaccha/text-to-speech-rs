@@ -12,6 +12,7 @@ use text_to_speech_rs::profile::resolver::ProfileResolver;
 use text_to_speech_rs::session::manager::SessionManager;
 use text_to_speech_rs::tts::registry::VoiceRegistry;
 use text_to_speech_rs::{command, handler};
+use text_to_speech_rs::localization::tts;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
@@ -20,6 +21,8 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
+
+    let tts_locales = tts::Locales::read_ftl("locales/tts".as_ref(), "en".to_string())?;
 
     info!("Starting text-to-speech bot");
 
@@ -68,7 +71,8 @@ async fn main() -> anyhow::Result<()> {
                     session_manager: SessionManager::new(),
                     registry,
                     resolver,
-                    repository
+                    repository,
+                    tts_locales
                 })
             })
         })
