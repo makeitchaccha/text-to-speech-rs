@@ -129,9 +129,9 @@ impl SessionActor {
 
                             // read name when current speaker is not same as last one.
                             if current_speaker != last_speaker_id && let Some(speaker) = cmd.speaker {
+                                last_speaker_id = current_speaker;
                                 segments.push(speaker.name);
                             }
-                            last_speaker_id = current_speaker;
                             segments.push(cmd.text.clone());
 
                             match Self::generate_and_play(segments, cmd.voice, driver.clone()).await {
@@ -156,9 +156,9 @@ impl SessionActor {
 
                             // read name when current speaker is not same as last one.
                             if current_speaker != last_speaker_id && let Some(speaker) = cmd.speaker {
+                                last_speaker_id = current_speaker;
                                 segments.push(speaker.name);
                             }
-                            last_speaker_id = current_speaker;
                             segments.push(cmd.text.clone());
 
                             match Self::generate_and_play(segments, cmd.voice, driver.clone()).await {
