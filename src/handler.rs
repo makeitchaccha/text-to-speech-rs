@@ -176,7 +176,7 @@ async fn send_session_notification(
         Err(_) => data.resolver.fallback()
     };
 
-    let voice = data.registry.get(profile_str).unwrap();
+    let voice = data.registry.get(profile_str).ok_or(anyhow::anyhow!("No voice preset found"))?;
     let name = guild_id.to_guild_cached(&ctx.cache)
         .and_then(|guild| Some(guild.members.get(&user_id)?.display_name().to_owned()))
         .unwrap_or_else(|| data.tts_locales.resolve(voice.language(), "someone", None).unwrap_or("someone".to_owned()));
