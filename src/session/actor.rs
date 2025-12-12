@@ -128,10 +128,10 @@ impl SessionActor {
                             let current_speaker = cmd.speaker.as_ref().map(|s| s.user_id);
 
                             // read name when current speaker is not same as last one.
-                            if current_speaker != last_speaker_id {
-                                last_speaker_id = current_speaker;
-                                segments.push(cmd.speaker.expect("should be some").name);
+                            if current_speaker != last_speaker_id && let Some(speaker) = cmd.speaker {
+                                segments.push(speaker.name);
                             }
+                            last_speaker_id = current_speaker;
                             segments.push(cmd.text.clone());
 
                             match Self::generate_and_play(segments, cmd.voice, driver.clone()).await {
@@ -155,10 +155,10 @@ impl SessionActor {
                             let current_speaker = cmd.speaker.as_ref().map(|s| s.user_id);
 
                             // read name when current speaker is not same as last one.
-                            if current_speaker != last_speaker_id {
-                                last_speaker_id = current_speaker;
-                                segments.push(cmd.speaker.expect("should be some").name);
+                            if current_speaker != last_speaker_id && let Some(speaker) = cmd.speaker {
+                                segments.push(speaker.name);
                             }
+                            last_speaker_id = current_speaker;
                             segments.push(cmd.text.clone());
 
                             match Self::generate_and_play(segments, cmd.voice, driver.clone()).await {
