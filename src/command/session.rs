@@ -35,7 +35,7 @@ pub async fn join(ctx: Context<'_>) -> Result<()> {
 
     tokio::spawn(actor.run());
 
-    ctx.data().session_manager.register(guild_id, ctx.channel_id(), handle.clone());
+    ctx.data().session_manager.register(guild_id, ctx.channel_id(), channel_id, handle.clone());
 
     let profile = ctx.data().resolver.resolve_guild_with_fallback(guild_id).await;
 
@@ -57,9 +57,9 @@ pub async fn join(ctx: Context<'_>) -> Result<()> {
 pub async fn leave(ctx: Context<'_>) -> Result<()> {
     let guild_id = ctx.guild_id().ok_or_else(|| anyhow::anyhow!("Guild only"))?;
 
-    let handle = ctx.data().session_manager.get(guild_id).ok_or(anyhow::anyhow!("Guild not found"))?;
+    let session = ctx.data().session_manager.get(guild_id).ok_or(anyhow::anyhow!("Guild not found"))?;
 
-    handle.leave().await?;
+    session.handle.leave().await?;
 
     ctx.say("Thank you for using text-to-speech-rs beta").await?;
 
