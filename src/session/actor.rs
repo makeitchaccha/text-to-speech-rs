@@ -128,9 +128,9 @@ impl SessionActor {
                             let current_speaker = cmd.speaker.as_ref().map(|s| s.user_id);
 
                             // read name when current speaker is not same as last one.
-                            if current_speaker != last_speaker_id {
+                            if current_speaker != last_speaker_id && let Some(speaker) = cmd.speaker {
                                 last_speaker_id = current_speaker;
-                                segments.push(cmd.speaker.expect("should be some").name);
+                                segments.push(speaker.name);
                             }
                             segments.push(cmd.text.clone());
 
@@ -155,9 +155,9 @@ impl SessionActor {
                             let current_speaker = cmd.speaker.as_ref().map(|s| s.user_id);
 
                             // read name when current speaker is not same as last one.
-                            if current_speaker != last_speaker_id {
+                            if current_speaker != last_speaker_id && let Some(speaker) = cmd.speaker {
                                 last_speaker_id = current_speaker;
-                                segments.push(cmd.speaker.expect("should be some").name);
+                                segments.push(speaker.name);
                             }
                             segments.push(cmd.text.clone());
 
