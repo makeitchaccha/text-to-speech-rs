@@ -12,7 +12,7 @@ use text_to_speech_rs::profile::resolver::ProfileResolver;
 use text_to_speech_rs::session::manager::SessionManager;
 use text_to_speech_rs::tts::registry::VoiceRegistry;
 use text_to_speech_rs::{command, handler};
-use text_to_speech_rs::localization::tts;
+use text_to_speech_rs::localization::{load_discord_locales, load_tts_locales};
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
@@ -22,7 +22,7 @@ async fn main() -> anyhow::Result<()> {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    let tts_locales = tts::load_from_static_dir("en")?;
+    let tts_locales = load_tts_locales("en")?;
 
     info!("Starting text-to-speech bot");
 
