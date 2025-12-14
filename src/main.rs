@@ -7,12 +7,12 @@ use sqlx::{Pool, Postgres, Sqlite};
 use std::sync::Arc;
 use text_to_speech_rs::config::{load_config, DatabaseConfig, DatabaseKind};
 use text_to_speech_rs::handler::event_handler;
+use text_to_speech_rs::localization::load_tts_locales;
 use text_to_speech_rs::profile::repository::ProfileRepository;
 use text_to_speech_rs::profile::resolver::ProfileResolver;
 use text_to_speech_rs::session::manager::SessionManager;
 use text_to_speech_rs::tts::registry::VoiceRegistry;
 use text_to_speech_rs::{command, handler};
-use text_to_speech_rs::localization::tts;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
@@ -22,7 +22,7 @@ async fn main() -> anyhow::Result<()> {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    let tts_locales = tts::load_from_static_dir("en")?;
+    let tts_locales = load_tts_locales("en")?;
 
     info!("Starting text-to-speech bot");
 

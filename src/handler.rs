@@ -6,17 +6,17 @@ use anyhow::{anyhow, Context};
 use fluent::{fluent_args, FluentArgs};
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::{ChannelId, VoiceState};
+use crate::localization::Locales;
 use crate::profile::repository::ProfileRepository;
 use crate::profile::resolver::ProfileResolver;
 use crate::sanitizer;
-use crate::localization::tts;
 
 pub struct Data{
     pub session_manager: SessionManager,
     pub registry: VoiceRegistry,
     pub resolver: ProfileResolver,
     pub repository: Arc<dyn ProfileRepository>,
-    pub tts_locales: tts::Locales
+    pub tts_locales: Locales
 }
 
 pub async fn event_handler(
