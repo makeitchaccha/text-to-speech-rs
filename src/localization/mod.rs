@@ -93,10 +93,10 @@ impl Locales {
         Ok(Self { search_policy, bundles })
     }
 
-    /// Resolves a localized message by searching through a cascading locale chain.
+    /// Resolves a localized message by searching through candidates according to the configured search policy.
     ///
     /// For a given locale (e.g., "ja-JP") and a defined fallback (e.g., "en"),
-    /// the search candidates are based on Search Policy.
+    /// the search candidates are based on the search policy (cascading or exact).
     /// The first successfully resolved message is returned.
     pub fn resolve(&self, locale: &str, id: &str, args: Option<&FluentArgs>) -> Result<String, Error> {
         for candidate in self.search_policy.generate_candidates(locale) {
