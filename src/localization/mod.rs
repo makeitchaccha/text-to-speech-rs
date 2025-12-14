@@ -7,14 +7,9 @@ type Error = anyhow::Error;
 type FluentBundle = fluent::bundle::FluentBundle<fluent::FluentResource, intl_memoizer::concurrent::IntlLangMemoizer>;
 
 const TTS_LOCALES: Dir = include_dir!("$CARGO_MANIFEST_DIR/locales/tts");
-const DISCORD_LOCALES: Dir = include_dir!("$CARGO_MANIFEST_DIR/locales/discord");
 
 pub fn load_tts_locales(fallback: &str) -> Result<Locales, Error> {
     load_from_static_dir(TTS_LOCALES, LocaleSearchPolicy::new_cascading(fallback.to_owned(), '-'))
-}
-
-pub fn load_discord_locales(fallback: &str) -> Result<Locales, Error> {
-    load_from_static_dir(DISCORD_LOCALES, LocaleSearchPolicy::new_exact(fallback.to_owned()))
 }
 
 fn load_from_static_dir(dir: Dir, policy: LocaleSearchPolicy) -> Result<Locales, Error> {
