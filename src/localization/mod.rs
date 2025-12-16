@@ -2,14 +2,20 @@ use std::collections::HashMap;
 use anyhow::anyhow;
 use fluent::FluentArgs;
 use include_dir::{include_dir, Dir};
+use crate::handler::Data;
 
 type Error = anyhow::Error;
 type FluentBundle = fluent::bundle::FluentBundle<fluent::FluentResource, intl_memoizer::concurrent::IntlLangMemoizer>;
 
 const TTS_LOCALES: Dir = include_dir!("$CARGO_MANIFEST_DIR/locales/tts");
+const DISCORD_LOCALES: Dir = include_dir!("$CARGO_MANIFEST_DIR/locales/discord");
 
 pub fn load_tts_locales(fallback: &str) -> Result<Locales, Error> {
     load_from_static_dir(TTS_LOCALES, LocaleSearchPolicy::new_cascading(fallback.to_owned(), '-'))
+}
+
+pub fn load_discord_locales(fallback: &str) -> Result<Locales, Error> {
+    load_from_static_dir(DISCORD_LOCALES, LocaleSearchPolicy::new_exact(fallback.to_string()))
 }
 
 fn load_from_static_dir(dir: Dir, policy: LocaleSearchPolicy) -> Result<Locales, Error> {
@@ -116,6 +122,77 @@ impl Locales {
         }
 
         Err(anyhow!("no fallback found for id '{}'", id))
+    }
+
+    // The following code: format, apply are derived from serenity-rs/poise.
+    // https://github.com/serenity-rs/poise/blob/518ff0564865bca2abf01ae8995b77340f439ef9/examples/fluent_localization/translation.rs
+    //
+    // Copyright (c) 2022 kangalioo
+    // Licensed under the MIT License.
+    // https://github.com/serenity-rs/poise/blob/main/LICENSE
+    fn format(
+        bundle: &FluentBundle,
+        id: &str,
+        attr: Option<&str>,
+        args: Option<&FluentArgs<'_>>,
+    ) -> Option<String> {
+        let message = bundle.get_message(id)?;
+        let pattern = match attr {
+            Some(attribute) => message.get_attribute(attribute)?.value(),
+            None => message.value()?,
+        };
+        let formatted = bundle.format_pattern(pattern, args, &mut vec![]);
+        Some(formatted.into_owned())
+    }
+
+    pub fn apply(&self, commands: &mut [poise::Command<Data, Error>],) {
+        for command in &mut *commands {
+            // recursively apply
+            self.apply(&mut command.subcommands);
+
+            // real-apply
+            for (locale, bundle) in &self.bundles {
+                // Insert localized command name and description
+                let localized_command_name = match Self::format(bundle, &command.identifying_name, None, None) {
+                    Some(x) => x,
+                    None => continue, // no localization entry => skip localization
+                };
+
+                command
+                    .name_localizations
+                    .insert(locale.clone(), localized_command_name);
+                command.description_localizations.insert(
+                    locale.clone(),
+                    Self::format(bundle, &command.identifying_name, Some("description"), None).unwrap(),
+                );
+
+                for parameter in &mut command.parameters {
+                    // Insert localized parameter name and description
+                    parameter.name_localizations.insert(
+                        locale.clone(),
+                        Self::format(bundle, &command.identifying_name, Some(&parameter.name), None).unwrap(),
+                    );
+                    parameter.description_localizations.insert(
+                        locale.clone(),
+                        Self::format(
+                            bundle,
+                            &command.identifying_name,
+                            Some(&format!("{}-description", parameter.name)),
+                            None,
+                        )
+                            .unwrap(),
+                    );
+
+                    // If this is a choice parameter, insert its localized variants
+                    for choice in &mut parameter.choices {
+                        choice.localizations.insert(
+                            locale.clone(),
+                            Self::format(bundle, &choice.name, None, None).unwrap(),
+                        );
+                    }
+                }
+            }
+        }
     }
 }
 
