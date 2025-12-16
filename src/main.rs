@@ -7,7 +7,7 @@ use sqlx::{Pool, Postgres, Sqlite};
 use std::sync::Arc;
 use text_to_speech_rs::config::{load_config, DatabaseConfig, DatabaseKind};
 use text_to_speech_rs::handler::event_handler;
-use text_to_speech_rs::localization::load_tts_locales;
+use text_to_speech_rs::localization::{load_discord_locales, load_tts_locales};
 use text_to_speech_rs::profile::repository::ProfileRepository;
 use text_to_speech_rs::profile::resolver::ProfileResolver;
 use text_to_speech_rs::session::manager::SessionManager;
@@ -23,6 +23,7 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let tts_locales = load_tts_locales("en")?;
+    let discord_locales = load_discord_locales("en-US")?;
 
     info!("Starting text-to-speech bot");
 
@@ -52,14 +53,14 @@ async fn main() -> anyhow::Result<()> {
 
     let resolver = ProfileResolver::new(repository.clone(), config.bot.global_profile.clone());
 
+    let mut commands = command::commands();
+
+    info!("{:?}", commands);
+    discord_locales.apply(&mut commands);
+
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![
-                command::moderation::register(),
-                command::session::join(),
-                command::session::leave(),
-                command::profile::voice()
-            ],
+            commands,
             event_handler: |ctx, event, framework, data| {
                 Box::pin(event_handler(ctx, event, framework, data))
             },
