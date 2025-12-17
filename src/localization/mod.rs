@@ -100,6 +100,7 @@ impl Locales {
     }
 
     /// Resolves a localized message by searching through candidates according to the configured search policy.
+    /// When attr exists, resolves the specified attribute of the message instead of the message value itself.
     ///
     /// For a given locale (e.g., "ja-JP") and a defined fallback (e.g., "en"),
     /// the search candidates are based on the search policy (cascading or exact).
