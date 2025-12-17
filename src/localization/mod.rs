@@ -123,9 +123,15 @@ impl Locales {
             };
 
             let pattern = match attr {
-                Some(attribute) => message.get_attribute(attribute).map(|attr| attr.value()).ok_or(anyhow!("no value found for {}.{}", id, attribute))?,
-                None => message.value().ok_or(anyhow!("no value found for id {}", id))?,
+                Some(attribute) => message.get_attribute(attribute).map(|attr| attr.value()),
+                None => message.value(),
             };
+
+            let pattern = match pattern {
+                Some(pattern) => pattern,
+                None => continue, // skips if no match
+            };
+
             let formatted = bundle.format_pattern(pattern, args, &mut vec![]);
 
             return Ok(formatted.into_owned())
@@ -348,6 +354,21 @@ mod tests {
         let result = ctx.locales.resolve("en-US", "no-key", None, None);
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn resolve_attr_on_cascading() {
+        let ctx =
+            TestContext::new(LocaleSearchPolicy::new_cascading("fallback".to_string(), '-'), "key = value-fallback")
+                .add_bundle("en",
+                            r#"key = value-en\
+                                .attr = attr-en
+                "#)
+                .add_bundle("en-US", "key = value-en-US");
+
+        let result = ctx.locales.resolve("en-US", "key", Some("attr"), None);
+
+        assert_eq!(result.ok(), Some("attr-en".into()));
     }
 
     #[test]
