@@ -145,10 +145,10 @@ impl Locales {
         Some(formatted.into_owned())
     }
 
-    pub fn apply(&self, commands: &mut [poise::Command<Data, Error>],) {
+    pub fn apply(&self, commands: &mut [poise::Command<Data, Error>]) -> Result<(), Error> {
         for command in &mut *commands {
             // recursively apply
-            self.apply(&mut command.subcommands);
+            self.apply(&mut command.subcommands)?;
 
             // real-apply
             for (locale, bundle) in &self.bundles {
@@ -163,14 +163,14 @@ impl Locales {
                     .insert(locale.clone(), localized_command_name);
                 command.description_localizations.insert(
                     locale.clone(),
-                    Self::format(bundle, &command.identifying_name, Some("description"), None).unwrap(),
+                    Self::format(bundle, &command.identifying_name, Some("description"), None).ok_or(anyhow!("failed to format command description {}", command.identifying_name))?,
                 );
 
                 for parameter in &mut command.parameters {
                     // Insert localized parameter name and description
                     parameter.name_localizations.insert(
                         locale.clone(),
-                        Self::format(bundle, &command.identifying_name, Some(&parameter.name), None).unwrap(),
+                        Self::format(bundle, &command.identifying_name, Some(&parameter.name), None).ok_or(anyhow!("failed to format parameter {} for command {}", parameter.name, command.identifying_name))?,
                     );
                     parameter.description_localizations.insert(
                         locale.clone(),
@@ -180,19 +180,21 @@ impl Locales {
                             Some(&format!("{}-description", parameter.name)),
                             None,
                         )
-                            .unwrap(),
+                            .ok_or(anyhow!("failed to format parameter description {} for command {}", parameter.name, command.identifying_name))?,
                     );
 
                     // If this is a choice parameter, insert its localized variants
                     for choice in &mut parameter.choices {
                         choice.localizations.insert(
                             locale.clone(),
-                            Self::format(bundle, &choice.name, None, None).unwrap(),
+                            Self::format(bundle, &choice.name, None, None).ok_or(anyhow!("failed to format choice {} for command {}", choice.name, command.identifying_name))?,
                         );
                     }
                 }
             }
         }
+
+        Ok(())
     }
 }
 

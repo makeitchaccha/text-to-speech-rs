@@ -55,7 +55,7 @@ async fn main() -> anyhow::Result<()> {
 
     let mut commands = command::commands();
 
-    discord_locales.apply(&mut commands);
+    discord_locales.apply(&mut commands)?;
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
