@@ -72,7 +72,8 @@ async fn main() -> anyhow::Result<()> {
                     registry,
                     resolver,
                     repository,
-                    tts_locales
+                    tts_locales,
+                    discord_locales
                 })
             })
         })

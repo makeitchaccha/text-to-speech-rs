@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use anyhow::Context as _;
-use poise::serenity_prelude::{ChannelId, Mentionable};
+use poise::CreateReply;
+use poise::serenity_prelude::{ChannelId, CreateEmbed, Mentionable};
 use crate::command::{Context, Result};
 use crate::session::actor::SessionActor;
 use crate::session::driver::SongbirdDriver;
@@ -48,7 +49,21 @@ pub async fn join(ctx: Context<'_>) -> Result<()> {
 
     handle.announce(ctx.data().tts_locales.resolve(voice.language(), "launch", None, None)?, voice).await?;
 
-    ctx.say(format!("Now, I'm reading {} in {}", ctx.channel_id().mention(), channel_id.mention())).await?;
+    let discord_locales = &ctx.data().discord_locales;
+    let locale = ctx.locale().expect("must be some when slash command");
+    ctx.send(CreateReply::default().embed(CreateEmbed::new()
+        .title(discord_locales.resolve(locale, "join-response", None, None)?)
+        .field(
+            discord_locales.resolve(locale, "join-response", Some("reading-channel"), None)?,
+            ctx.channel_id().mention().to_string(),
+            true
+        )
+        .field(
+            discord_locales.resolve(locale, "join-response", Some("voice-channel"), None)?,
+            channel_id.mention().to_string(),
+            true
+        )
+    )).await?;
 
     Ok(())
 }
@@ -61,7 +76,13 @@ pub async fn leave(ctx: Context<'_>) -> Result<()> {
 
     session.handle.leave().await?;
 
-    ctx.say("Thank you for using text-to-speech-rs beta").await?;
+
+    let discord_locales = &ctx.data().discord_locales;
+    let locale = ctx.locale().expect("must be some when slash command");
+    ctx.send(CreateReply::default().embed(CreateEmbed::new()
+        .title(discord_locales.resolve(locale, "leave-response", None, None)?)
+        .description(discord_locales.resolve(locale, "leave-response", Some("thanks"), None)?)
+    )).await?;
 
     Ok(())
 }

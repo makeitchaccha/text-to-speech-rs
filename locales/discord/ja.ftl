@@ -20,3 +20,10 @@ voice-guild-choose = choose
 
 voice-guild-clear = clear
     .description = サーバーの標準ボイス設定をデフォルトに戻します
+
+join-response = 🚀 読み上げ準備完了
+    .reading-channel = 📝 読み上げチャンネル
+    .voice-channel = 📢 ボイスチャンネル
+
+leave-response = 👋 読み上げ終了
+    .thanks = 💖 ご利用ありがとうございました！

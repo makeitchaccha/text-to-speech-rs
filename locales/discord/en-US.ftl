@@ -20,3 +20,10 @@ voice-guild-choose = choose
 
 voice-guild-clear = clear
     .description = Reset the guild's standard voice choice to default.
+
+join-response = 🚀 TTS ready
+    .reading-channel = 📝 Reading channel
+    .voice-channel = 📢 Voice channel
+
+leave-response = 👋 TTS Ended
+    .thanks = 💖 Thanks for using the bot!
