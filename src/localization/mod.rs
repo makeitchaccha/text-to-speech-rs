@@ -218,7 +218,6 @@ impl Locales {
 mod tests {
     use std::collections::HashMap;
     use fluent::FluentResource;
-    use sqlx::encode::IsNull::No;
     use super::{FluentBundle, LocaleMatchingMode, LocaleSearchPolicy, Locales};
 
     fn create_policy(fallback: &str, mode: LocaleMatchingMode) -> LocaleSearchPolicy {
