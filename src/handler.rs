@@ -16,7 +16,8 @@ pub struct Data{
     pub registry: VoiceRegistry,
     pub resolver: ProfileResolver,
     pub repository: Arc<dyn ProfileRepository>,
-    pub tts_locales: Locales
+    pub tts_locales: Locales,
+    pub discord_locales: Locales,
 }
 
 pub async fn event_handler(
