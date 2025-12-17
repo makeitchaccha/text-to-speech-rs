@@ -360,7 +360,7 @@ mod tests {
         let ctx =
             TestContext::new(LocaleSearchPolicy::new_cascading("fallback".to_string(), '-'), "key = value-fallback")
                 .add_bundle("en",
-                            r#"key = value-en\
+                            r#"key = value-en
                                 .attr = attr-en
                 "#)
                 .add_bundle("en-US", "key = value-en-US");
