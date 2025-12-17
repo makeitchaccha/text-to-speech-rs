@@ -7,14 +7,38 @@ pub async fn voice(_: Context<'_>) -> Result<()> {
     Ok(())
 }
 
-#[poise::command(slash_command, subcommands("choose", "clear"), subcommand_required)]
+#[poise::command(slash_command, subcommands("user_choose", "user_clear"), subcommand_required)]
 pub async fn user(ctx: Context<'_>) -> Result<()> {
     Ok(())
 }
 
-#[poise::command(slash_command, subcommands("choose", "clear"), subcommand_required)]
+/// Choose your reading voice
+#[poise::command(slash_command, rename = "choose", identifying_name = "voice-user-choose")]
+pub async fn user_choose(ctx: Context<'_>, name: String) -> Result<()> {
+    common_choose(ctx, name).await
+}
+
+/// Clear your reading voice
+#[poise::command(slash_command, rename = "clear", identifying_name = "voice-user-clear")]
+pub async fn user_clear(ctx: Context<'_>) -> Result<()> {
+    common_clear(ctx).await
+}
+
+#[poise::command(slash_command, subcommands("guild_choose", "guild_clear"), subcommand_required)]
 pub async fn guild(ctx: Context<'_>) -> Result<()> {
     Ok(())
+}
+
+/// Choose guild default reading voice
+#[poise::command(slash_command, rename = "choose", identifying_name = "voice-guild-choose")]
+pub async fn guild_choose(ctx: Context<'_>, name: String) -> Result<()> {
+    common_choose(ctx, name).await
+}
+
+/// Clear guild default reading voice
+#[poise::command(slash_command, rename = "clear", identifying_name = "voice-guild-clear")]
+pub async fn guild_clear(ctx: Context<'_>) -> Result<()> {
+    common_clear(ctx).await
 }
 
 enum Scope {
@@ -40,10 +64,8 @@ fn find_scope(ctx: Context<'_>) -> Result<Scope> {
     }
 }
 
-#[poise::command(slash_command)]
-pub async fn choose(
+pub async fn common_choose(
     ctx: Context<'_>,
-    #[description = "Name of voice to choose"]
     name: String,
 ) -> Result<()> {
     let scope = find_scope(ctx)?;
@@ -66,8 +88,7 @@ pub async fn choose(
     Ok(())
 }
 
-#[poise::command(slash_command)]
-pub async fn clear(
+pub async fn common_clear(
     ctx: Context<'_>
 ) -> Result<()> {
     let scope = find_scope(ctx)?;
