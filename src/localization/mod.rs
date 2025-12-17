@@ -104,7 +104,13 @@ impl Locales {
     /// For a given locale (e.g., "ja-JP") and a defined fallback (e.g., "en"),
     /// the search candidates are based on the search policy (cascading or exact).
     /// The first successfully resolved message is returned.
-    pub fn resolve(&self, locale: &str, id: &str, args: Option<&FluentArgs>) -> Result<String, Error> {
+    pub fn resolve(
+        &self,
+        locale: &str,
+        id: &str,
+        attr: Option<&str>,
+        args: Option<&FluentArgs>
+    ) -> Result<String, Error> {
         for candidate in self.search_policy.generate_candidates(locale) {
             let bundle = match self.bundles.get(candidate) {
                 Some(bundle) => bundle,
@@ -115,7 +121,11 @@ impl Locales {
                 Some(message) => message,
                 None => continue, // skips if no match
             };
-            let pattern = message.value().ok_or(anyhow!("message '{}' exists but has no value pattern", id))?;
+
+            let pattern = match attr {
+                Some(attribute) => message.get_attribute(attribute).map(|attr| attr.value()).ok_or(anyhow!("no value found for {}.{}", id, attribute))?,
+                None => message.value().ok_or(anyhow!("no value found for id {}", id))?,
+            };
             let formatted = bundle.format_pattern(pattern, args, &mut vec![]);
 
             return Ok(formatted.into_owned())
@@ -202,6 +212,7 @@ impl Locales {
 mod tests {
     use std::collections::HashMap;
     use fluent::FluentResource;
+    use sqlx::encode::IsNull::No;
     use super::{FluentBundle, LocaleMatchingMode, LocaleSearchPolicy, Locales};
 
     fn create_policy(fallback: &str, mode: LocaleMatchingMode) -> LocaleSearchPolicy {
@@ -298,7 +309,7 @@ mod tests {
                 .add_bundle("en", "key = value-en")
                 .add_bundle("en-US", "key = value-en-US");
 
-        let result = ctx.locales.resolve("en-US", "key", None);
+        let result = ctx.locales.resolve("en-US", "key", None, None);
 
         assert_eq!(result.ok(), Some("value-en-US".into()));
     }
@@ -310,7 +321,7 @@ mod tests {
                 .add_bundle("en", "key = value-en")
                 .add_bundle("en-US", "key = value-en-US");
 
-        let result = ctx.locales.resolve("en-GB", "key", None);
+        let result = ctx.locales.resolve("en-GB", "key", None, None);
 
         assert_eq!(result.ok(), Some("value-en".into()));
     }
@@ -322,7 +333,7 @@ mod tests {
                 .add_bundle("en", "key = value-en")
                 .add_bundle("en-US", "key = value-en-US");
 
-        let result = ctx.locales.resolve("ja", "key", None);
+        let result = ctx.locales.resolve("ja", "key", None, None);
 
         assert_eq!(result.ok(), Some("value-fallback".into()));
     }
@@ -334,7 +345,19 @@ mod tests {
                 .add_bundle("en", "key = value-en")
                 .add_bundle("en-US", "key = value-en-US");
 
-        let result = ctx.locales.resolve("en-US", "no-key", None);
+        let result = ctx.locales.resolve("en-US", "no-key", None, None);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn fail_to_resolve_if_nonexistent_attr_on_cascading() {
+        let ctx =
+            TestContext::new(LocaleSearchPolicy::new_cascading("fallback".to_string(), '-'), "key = value-fallback")
+                .add_bundle("en", "key = value-en")
+                .add_bundle("en-US", "key = value-en-US");
+
+        let result = ctx.locales.resolve("en-US", "key", Some("no-attr"), None);
 
         assert!(result.is_err());
     }
