@@ -14,9 +14,9 @@ voice-user-clear = clear
     .description = Reset your voice choice to default.
 
 voice-guild-choose = choose
-    .description = Select the guild's standard reading voice
+    .description = Select the guild's standard reading voice.
     .name = voice
     .name-description = Voice for reading aloud
 
 voice-guild-clear = clear
-    .description = Reset the guild's standard voice choice to default
+    .description = Reset the guild's standard voice choice to default.
