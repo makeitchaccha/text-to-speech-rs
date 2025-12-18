@@ -73,8 +73,6 @@ pub async fn event_handler(
                 return Ok(());
             }
 
-
-
             if let Some(session) = data.session_manager.get_by_text_channel(new_message.channel_id) {
                 let profile = data.resolver.resolve_with_fallback(new_message.author.id, new_message.guild_id.ok_or(anyhow::anyhow!("Guild not found"))?).await;
 
