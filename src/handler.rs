@@ -73,6 +73,8 @@ pub async fn event_handler(
                 return Ok(());
             }
 
+
+
             if let Some(session) = data.session_manager.get_by_text_channel(new_message.channel_id) {
                 let profile = data.resolver.resolve_with_fallback(new_message.author.id, new_message.guild_id.ok_or(anyhow::anyhow!("Guild not found"))?).await;
 
@@ -91,7 +93,11 @@ pub async fn event_handler(
                 let text = sanitizer::replace_mentions(&text, ctx, guild_id, &new_message.mentions, &new_message.mention_roles, &new_message.mention_channels)?;
                 let text = sanitizer::sanitize(&text, 300);
 
-                if let Err(err) = session.handle.speak(text, voice, Speaker::new(new_message.author.id, new_message.author.display_name().to_string())).await.context("failed to send message") {
+                let name = guild_id.to_guild_cached(ctx.cache.as_ref())
+                    .and_then(|guild| guild.members.get(&new_message.author.id).map(|member| member.display_name().to_string()))
+                    .unwrap_or_else(|| new_message.author.display_name().to_string());
+
+                if let Err(err) = session.handle.speak(text, voice, Speaker::new(new_message.author.id, name)).await.context("failed to send message") {
                     tracing::error!("Error sending message: {:?}", err);
                     // lazy delete
                     data.session_manager.remove(guild_id);
