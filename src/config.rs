@@ -3,6 +3,7 @@ use anyhow::anyhow;
 use config::Config;
 use serde::Deserialize;
 use std::collections::HashMap;
+use crate::tts::VoiceDetail;
 
 pub fn load_config(path: &str) -> anyhow::Result<AppConfig> {
     let config = Config::builder()
@@ -90,8 +91,41 @@ pub struct InMemoryCacheConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct ProfileConfig {
+    pub note: Option<VoiceDetailConfig>,
+
+    #[serde(flatten)]
+    pub voice_backend: ProfileBackendConfig,
+}
+
+#[derive(Clone, Debug, Deserialize, Default)]
+pub struct VoiceDetailConfig {
+    pub name: Option<String>,
+    pub language: Option<String>,
+    pub description: Option<String>,
+}
+
+impl VoiceDetailConfig {
+    pub fn fill(&self, default: VoiceDetail) -> VoiceDetail {
+        VoiceDetail {
+            name: self.name.clone().unwrap_or(default.name),
+            provider: default.provider,
+            description: self.description.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "backend")]
-pub enum ProfileConfig {
+pub enum ProfileBackendConfig {
     #[serde(rename="google_cloud")]
     GoogleCloudVoice(GoogleCloudVoiceConfig),
+}
+
+impl ProfileBackendConfig {
+    pub fn generate_default_detail(&self, name: &str) -> VoiceDetail {
+        match &self {
+            ProfileBackendConfig::GoogleCloudVoice(config) => config.generate_default_detail(name)
+        }
+    }
 }

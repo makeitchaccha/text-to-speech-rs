@@ -11,7 +11,7 @@ use text_to_speech_rs::localization::{load_discord_locales, load_tts_locales};
 use text_to_speech_rs::profile::repository::ProfileRepository;
 use text_to_speech_rs::profile::resolver::ProfileResolver;
 use text_to_speech_rs::session::manager::SessionManager;
-use text_to_speech_rs::tts::registry::VoiceRegistry;
+use text_to_speech_rs::tts::registry::VoicePackageRegistry;
 use text_to_speech_rs::{command, handler};
 use tracing::info;
 use tracing_subscriber::EnvFilter;
@@ -34,7 +34,7 @@ async fn main() -> anyhow::Result<()> {
 
     info!("Loaded config");
 
-    let mut registry_builder = VoiceRegistry::builder(config.clone());
+    let mut registry_builder = VoicePackageRegistry::builder(config.clone());
 
     if let Some(_google_cloud_config) = &config.backend.google_cloud {
         info!("Using Google Cloud credentials");
