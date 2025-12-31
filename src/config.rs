@@ -101,7 +101,7 @@ pub struct ProfileConfig {
 #[derive(Clone, Debug, Deserialize, Default)]
 pub struct VoiceDetailConfig {
     pub name: Option<String>,
-    pub language: Option<String>,
+
     pub description: Option<String>,
 }
 
@@ -110,7 +110,7 @@ impl VoiceDetailConfig {
         VoiceDetail {
             name: self.name.clone().unwrap_or(default.name),
             provider: default.provider,
-            description: self.description.clone(),
+            description: self.description.clone().or(default.description),
         }
     }
 }

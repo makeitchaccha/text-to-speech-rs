@@ -80,7 +80,7 @@ async fn autocomplete_voice_name(
     let candidates = ctx.data().registry.find_prefixed_all(partial);
     candidates.map(|(id, package)| AutocompleteChoice::new(match package.detail.description.as_ref() {
         Some(description) => format!("{}  |  {} ({})", package.detail.provider, package.detail.name, description),
-        None => format!("{} | {}", package.detail.provider, package.detail.name),
+        None => format!("{}  |  {}", package.detail.provider, package.detail.name),
     }, id))
 }
 
