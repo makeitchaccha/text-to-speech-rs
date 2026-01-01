@@ -1,4 +1,4 @@
-use crate::tts::{Voice, VoiceError, DISCORD_SAMPLE_RATE};
+use crate::tts::{Voice, VoiceDetail, VoiceError, DISCORD_SAMPLE_RATE};
 use async_trait::async_trait;
 use google_cloud_texttospeech_v1::client::TextToSpeech;
 use google_cloud_texttospeech_v1::model::{AudioConfig, AudioEncoding, SsmlVoiceGender, SynthesisInput, VoiceSelectionParams};
@@ -61,6 +61,16 @@ pub struct GoogleCloudVoiceConfig {
     pub pitch: Option<f64>,
     pub volume_gain_db: Option<f64>,
     pub encoding: Option<Encoding>,
+}
+
+impl GoogleCloudVoiceConfig {
+    pub fn generate_default_detail(&self, key: &str) -> VoiceDetail {
+        VoiceDetail {
+            name: key.to_owned(),
+            provider: "Google Cloud".to_owned(),
+            description: None,
+        }
+    }
 }
 
 impl From<GoogleCloudVoiceConfig> for (VoiceSelectionParams, AudioConfig) {
