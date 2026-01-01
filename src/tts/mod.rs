@@ -3,7 +3,7 @@ pub mod google_cloud;
 pub mod registry;
 
 use async_trait::async_trait;
-use serde::Deserialize;
+
 use thiserror::Error;
 
 const DISCORD_SAMPLE_RATE: i32 = 48_000;

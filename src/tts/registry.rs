@@ -37,7 +37,7 @@ impl VoicePackageRegistry {
         self.packages.get(id).map(|v| v.voice.clone())
     }
 
-    pub fn find_prefixed_all(&self, prefix: &str) -> impl Iterator<Item=(&str, &VoicePackage)> {
+    pub fn find_prefixed_all(&self, prefix: &str) -> impl Iterator<Item = (&str, &VoicePackage)> {
         self.packages.iter()
             .filter(move |&(id, _)| id.starts_with(prefix))
             .map(|(id, voice)| (id.as_str(), voice))
@@ -92,7 +92,7 @@ impl VoiceRegistryBuilder {
                 },
             };
 
-            voices.insert(id.to_string(), VoicePackage{ voice, detail });
+            voices.insert(id.to_string(), VoicePackage { voice, detail });
         }
 
         Ok(VoicePackageRegistry::new(voices))

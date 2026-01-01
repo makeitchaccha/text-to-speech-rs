@@ -118,7 +118,7 @@ impl VoiceDetailConfig {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "backend")]
 pub enum ProfileBackendConfig {
-    #[serde(rename="google_cloud")]
+    #[serde(rename = "google_cloud")]
     GoogleCloudVoice(GoogleCloudVoiceConfig),
 }
 
