@@ -106,7 +106,10 @@ pub struct VoiceDetailConfig {
 }
 
 impl VoiceDetailConfig {
-    pub fn fill(&self, default: VoiceDetail) -> VoiceDetail {
+    /// Resolve this config into VoiceDetail using a default
+    ///
+    /// Use configured value if present, otherwise fallback to default.
+    pub fn resolve(&self, default: VoiceDetail) -> VoiceDetail {
         VoiceDetail {
             name: self.name.clone().unwrap_or(default.name),
             provider: default.provider,

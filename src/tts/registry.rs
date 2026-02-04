@@ -37,9 +37,10 @@ impl VoicePackageRegistry {
         self.packages.get(id).map(|v| v.voice.clone())
     }
 
+    /// find all prefixed
     pub fn find_prefixed_all(&self, prefix: &str) -> impl Iterator<Item = (&str, &VoicePackage)> {
         self.packages.iter()
-            .filter(move |&(id, _)| id.starts_with(prefix))
+            .filter(move |&(_, package)| package.detail.name.starts_with(prefix))
             .map(|(id, voice)| (id.as_str(), voice))
     }
 }
@@ -76,7 +77,7 @@ impl VoiceRegistryBuilder {
 
         for (id, profile) in &self.config.profiles {
             let detail = profile.note.as_ref()
-                .map(|config| config.fill(profile.voice_backend.generate_default_detail(id)))
+                .map(|config| config.resolve(profile.voice_backend.generate_default_detail(id)))
                 .unwrap_or_else(|| profile.voice_backend.generate_default_detail(id));
 
             let voice: Arc<dyn Voice> = match &profile.voice_backend {
