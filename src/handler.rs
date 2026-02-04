@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use crate::session::manager::SessionManager;
 use crate::session::{SessionHandle, Speaker};
-use crate::tts::registry::VoiceRegistry;
+use crate::tts::registry::VoicePackageRegistry;
 use anyhow::{anyhow, Context};
 use fluent::{fluent_args, FluentArgs};
 use poise::serenity_prelude as serenity;
@@ -13,7 +13,7 @@ use crate::sanitizer;
 
 pub struct Data{
     pub session_manager: SessionManager,
-    pub registry: VoiceRegistry,
+    pub registry: VoicePackageRegistry,
     pub resolver: ProfileResolver,
     pub repository: Arc<dyn ProfileRepository>,
     pub tts_locales: Locales,
@@ -83,7 +83,7 @@ pub async fn event_handler(
                 };
 
                 let voice = data.registry
-                    .get(profile_str)
+                    .get_voice(profile_str)
                     .ok_or_else(|| anyhow::anyhow!("No voice preset found"))?;
 
                 let guild_id = new_message.guild_id.ok_or(anyhow::anyhow!("Message does not contain guild ID"))?;
@@ -181,7 +181,7 @@ async fn send_session_notification(
         Err(_) => data.resolver.fallback()
     };
 
-    let voice = data.registry.get(profile_str).ok_or(anyhow::anyhow!("No voice preset found"))?;
+    let voice = data.registry.get_voice(profile_str).ok_or(anyhow::anyhow!("No voice preset found"))?;
     let name = guild_id.to_guild_cached(&ctx.cache)
         .and_then(|guild| guild.members.get(&user_id).map(|member| member.display_name().to_owned()))
         .unwrap_or_else(|| data.tts_locales.resolve(voice.language(), "someone", None, None).unwrap_or("someone".to_owned()));

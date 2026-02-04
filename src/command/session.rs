@@ -45,7 +45,7 @@ pub async fn join(ctx: Context<'_>) -> Result<()> {
         Err(_) => ctx.data().resolver.fallback()
     };
 
-    let voice = ctx.data().registry.get(profile_str).unwrap();
+    let voice = ctx.data().registry.get_voice(profile_str).unwrap();
 
     handle.announce(ctx.data().tts_locales.resolve(voice.language(), "launch", None, None)?, voice).await?;
 

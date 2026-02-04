@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
 use anyhow::anyhow;
+use poise::serenity_prelude::AutocompleteChoice;
 use crate::command::{Context, Result};
 
 #[poise::command(slash_command, guild_only, subcommands("user", "guild"), subcommand_required)]
@@ -14,7 +15,11 @@ pub async fn user(ctx: Context<'_>) -> Result<()> {
 
 /// Choose your reading voice
 #[poise::command(slash_command, rename = "choose", identifying_name = "voice-user-choose")]
-pub async fn user_choose(ctx: Context<'_>, name: String) -> Result<()> {
+pub async fn user_choose(
+    ctx: Context<'_>,
+    #[autocomplete = "autocomplete_voice_name"]
+    name: String
+) -> Result<()> {
     common_choose(ctx, name).await
 }
 
@@ -31,7 +36,11 @@ pub async fn guild(ctx: Context<'_>) -> Result<()> {
 
 /// Choose guild default reading voice
 #[poise::command(slash_command, rename = "choose", identifying_name = "voice-guild-choose")]
-pub async fn guild_choose(ctx: Context<'_>, name: String) -> Result<()> {
+pub async fn guild_choose(
+    ctx: Context<'_>,
+    #[autocomplete = "autocomplete_voice_name"]
+    name: String
+) -> Result<()> {
     common_choose(ctx, name).await
 }
 
@@ -64,13 +73,24 @@ fn find_scope(ctx: Context<'_>) -> Result<Scope> {
     }
 }
 
+async fn autocomplete_voice_name(
+    ctx: Context<'_>,
+    partial: &str,
+) -> impl Iterator<Item = AutocompleteChoice> {
+    let candidates = ctx.data().registry.find_prefixed_all(partial);
+    candidates.map(|(id, package)| AutocompleteChoice::new(match package.detail.description.as_ref() {
+        Some(description) => format!("{}  |  {} ({})", package.detail.provider, package.detail.name, description),
+        None => format!("{}  |  {}", package.detail.provider, package.detail.name),
+    }, id))
+}
+
 pub async fn common_choose(
     ctx: Context<'_>,
     name: String,
 ) -> Result<()> {
     let scope = find_scope(ctx)?;
 
-    if ctx.data().registry.get(name.as_str()).is_none() {
+    if ctx.data().registry.get_voice(name.as_str()).is_none() {
         return Err(anyhow::anyhow!(format!("voice {} not found", name)));
     }
 

@@ -3,6 +3,7 @@ pub mod google_cloud;
 pub mod registry;
 
 use async_trait::async_trait;
+
 use thiserror::Error;
 
 const DISCORD_SAMPLE_RATE: i32 = 48_000;
@@ -15,6 +16,12 @@ pub enum VoiceError {
     Cache(anyhow::Error),
     #[error("Unknown error: {0}")]
     Unknown(anyhow::Error),
+}
+
+pub struct VoiceDetail {
+    pub name: String,
+    pub provider: String,
+    pub description: Option<String>,
 }
 
 /// # Voice: normalized pcm ready to play with songbird
