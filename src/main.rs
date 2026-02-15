@@ -1,11 +1,14 @@
+mod cli;
+
 use anyhow::Context;
 use google_cloud_texttospeech_v1::client::TextToSpeech;
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::GatewayIntents;
 use songbird::SerenityInit;
-use sqlx::{Pool, Postgres, Sqlite};
+use sqlx::{migrate, Pool, Postgres, Sqlite};
 use std::sync::Arc;
-use text_to_speech_rs::config::{load_config, DatabaseConfig, DatabaseKind};
+use clap::Parser;
+use text_to_speech_rs::config::{load_config, AppConfig, DatabaseConfig, DatabaseKind};
 use text_to_speech_rs::handler::event_handler;
 use text_to_speech_rs::localization::{load_discord_locales, load_tts_locales};
 use text_to_speech_rs::profile::repository::ProfileRepository;
@@ -15,20 +18,47 @@ use text_to_speech_rs::tts::registry::VoicePackageRegistry;
 use text_to_speech_rs::{command, handler};
 use tracing::info;
 use tracing_subscriber::EnvFilter;
+use crate::cli::MigrateCommand;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let cli = cli::Cli::parse();
+
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
+
+    let config = load_config("config.toml")
+        .context("Failed to load config.toml")?;
+
+    match cli.command {
+        cli::Commands::Run { auto_migrate } => {
+            cli_run(config, auto_migrate).await
+        },
+        cli::Commands::Migrate { command } => {
+            match command {
+                MigrateCommand::Up => {
+                    migrate_up(&config).await
+                },
+                MigrateCommand::Status => {
+                    migrate_status(&config).await
+                }
+            }
+        },
+    }
+}
+
+async fn cli_run(config: AppConfig, auto_migrate: bool) -> anyhow::Result<()> {
+    if auto_migrate {
+        migrate_up(&config).await?;
+    } else {
+        // just check only.
+    }
 
     let tts_locales = load_tts_locales("en")?;
     let discord_locales = load_discord_locales("en-US")?;
 
     info!("Starting text-to-speech bot");
-
-    let config = load_config("config.toml")
-        .context("Failed to load config.toml")?;
 
     config.verify()?;
 
@@ -87,6 +117,24 @@ async fn main() -> anyhow::Result<()> {
     client.start().await?;
 
     Ok(())
+}
+
+async fn migrate_up(config: &AppConfig) -> anyhow::Result<()> {
+    match config.database.kind {
+        DatabaseKind::SQLite => {
+            let pool = sqlx::SqlitePool::connect(config.database.url.as_str()).await?;
+            sqlx::migrate!("./migrations/sqlite").run(&pool).await?;
+        },
+        DatabaseKind::Postgres => {
+            let pool = sqlx::PgPool::connect(&config.database.url.as_str()).await?;
+            sqlx::migrate!("./migrations/postgres").run(&pool).await?;
+        }
+    }
+    Ok(())
+}
+
+async fn migrate_status(config: &AppConfig) -> anyhow::Result<()> {
+    unimplemented!()
 }
 
 async fn prepare_repository(config: &DatabaseConfig) -> anyhow::Result<Arc<dyn ProfileRepository>> {
