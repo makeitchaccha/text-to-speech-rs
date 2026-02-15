@@ -1,11 +1,12 @@
 mod cli;
+mod database;
 
 use anyhow::Context;
 use google_cloud_texttospeech_v1::client::TextToSpeech;
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::GatewayIntents;
 use songbird::SerenityInit;
-use sqlx::{migrate, Pool, Postgres, Sqlite};
+use sqlx::{migrate, AnyPool, Database, Pool, Postgres, Sqlite};
 use std::sync::Arc;
 use clap::Parser;
 use text_to_speech_rs::config::{load_config, AppConfig, DatabaseConfig, DatabaseKind};
@@ -19,6 +20,7 @@ use text_to_speech_rs::{command, handler};
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 use crate::cli::MigrateCommand;
+use crate::database::WrappedPool;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -31,26 +33,29 @@ async fn main() -> anyhow::Result<()> {
     let config = load_config("config.toml")
         .context("Failed to load config.toml")?;
 
+    let pool = prepare_database(&config.database).await?;
+
     match cli.command {
         cli::Commands::Run { auto_migrate } => {
-            cli_run(config, auto_migrate).await
+            cli_run(config, pool, auto_migrate).await
         },
         cli::Commands::Migrate { command } => {
             match command {
                 MigrateCommand::Up => {
-                    migrate_up(&config).await
+                    pool.migrate_up().await?;
+                    Ok(())
                 },
                 MigrateCommand::Status => {
-                    migrate_status(&config).await
+                    unimplemented!()
                 }
             }
         },
     }
 }
 
-async fn cli_run(config: AppConfig, auto_migrate: bool) -> anyhow::Result<()> {
+async fn cli_run(config: AppConfig, pool: WrappedPool, auto_migrate: bool) -> anyhow::Result<()> {
     if auto_migrate {
-        migrate_up(&config).await?;
+        pool.migrate_up().await?;
     } else {
         // just check only.
     }
@@ -79,7 +84,7 @@ async fn cli_run(config: AppConfig, auto_migrate: bool) -> anyhow::Result<()> {
 
     info!("VoiceRegistry built successfully.");
 
-    let repository = prepare_repository(&config.database).await?;
+    let repository = pool.profile_repository();
 
     let resolver = ProfileResolver::new(repository.clone(), config.bot.global_profile.clone());
 
@@ -119,33 +124,13 @@ async fn cli_run(config: AppConfig, auto_migrate: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn migrate_up(config: &AppConfig) -> anyhow::Result<()> {
-    match config.database.kind {
-        DatabaseKind::SQLite => {
-            let pool = sqlx::SqlitePool::connect(config.database.url.as_str()).await?;
-            sqlx::migrate!("./migrations/sqlite").run(&pool).await?;
-        },
-        DatabaseKind::Postgres => {
-            let pool = sqlx::PgPool::connect(&config.database.url.as_str()).await?;
-            sqlx::migrate!("./migrations/postgres").run(&pool).await?;
-        }
-    }
-    Ok(())
-}
-
-async fn migrate_status(_: &AppConfig) -> anyhow::Result<()> {
-    unimplemented!()
-}
-
-async fn prepare_repository(config: &DatabaseConfig) -> anyhow::Result<Arc<dyn ProfileRepository>> {
+async fn prepare_database(config: &DatabaseConfig) -> anyhow::Result<WrappedPool> {
     match config.kind {
         DatabaseKind::SQLite => {
             #[cfg(feature = "sqlite")]
             {
-                use text_to_speech_rs::profile::repository::sqlite::SQLiteProfileRepository;
                 info!("Opening SQLite database...");
-                let pool: Pool<Sqlite> = sqlx::SqlitePool::connect(&config.url).await?;
-                Ok(Arc::new(SQLiteProfileRepository::new(pool)))
+                Ok(WrappedPool::Sqlite(sqlx::SqlitePool::connect(&config.url).await?))
             }
             #[cfg(not(feature = "sqlite"))]
             anyhow::bail!("SQLite selected, but 'sqlite' feature is not enabled.")
@@ -153,10 +138,8 @@ async fn prepare_repository(config: &DatabaseConfig) -> anyhow::Result<Arc<dyn P
         DatabaseKind::Postgres => {
             #[cfg(feature = "postgres")]
             {
-                use text_to_speech_rs::profile::repository::postgres::PostgresRepository;
                 info!("Connecting to PostgreSQL...");
-                let pool: Pool<Postgres> = sqlx::PgPool::connect(&config.url).await?;
-                Ok(Arc::new(PostgresRepository::new(pool)))
+                Ok(WrappedPool::Postgres(sqlx::PgPool::connect(&config.url).await?))
             }
             #[cfg(not(feature = "postgres"))]
             anyhow::bail!("PostgreSQL selected, but 'postgres' feature is not enabled.")
