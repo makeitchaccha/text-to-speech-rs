@@ -133,7 +133,7 @@ async fn migrate_up(config: &AppConfig) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn migrate_status(config: &AppConfig) -> anyhow::Result<()> {
+async fn migrate_status(_: &AppConfig) -> anyhow::Result<()> {
     unimplemented!()
 }
 
