@@ -43,7 +43,12 @@ async fn main() -> anyhow::Result<()> {
                     Ok(())
                 },
                 MigrateCommand::Status => {
-                    unimplemented!()
+                    let status = pool.migrate_status().await?;
+                    for (m, is_applied) in status {
+                        let mark = if is_applied { "✅" } else { "⚠️ PENDING" };
+                        println!("{} [{}] {}", mark, m.version, m.description);
+                    }
+                    Ok(())
                 }
             }
         },
@@ -63,7 +68,7 @@ async fn cli_run(config: AppConfig, pool: WrappedPool, auto_migrate: bool) -> an
             error!("Database schema is out of date ({} pending migrations).", pending_count);
             error!("Details:");
             for (m, _) in status.iter().filter(|(_, is_applied)| !*is_applied) {
-                error!("  ⚠️ PENDING [{}] {}", m.version, m.description);
+                error!("⚠️ PENDING [{}] {}", m.version, m.description);
             }
             anyhow::bail!("Please run '{} migrate up' or start with '--auto-migrate=true'.", std::env::args().next().unwrap_or("bot".to_string()));
         }
