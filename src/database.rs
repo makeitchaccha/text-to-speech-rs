@@ -1,4 +1,8 @@
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use sqlx::Acquire;
+use sqlx::migrate::{Migrate, Migration};
+use tracing::Instrument;
 use text_to_speech_rs::profile::repository::ProfileRepository;
 
 pub enum WrappedPool {
@@ -16,6 +20,46 @@ impl WrappedPool {
             WrappedPool::Postgres(pool) => {
                 sqlx::migrate!("./migrations/postgres").run(pool).await?;
                 Ok(())
+            }
+        }
+    }
+
+    pub async fn migrate_status(&self) -> anyhow::Result<Vec<(Migration, bool)>> {
+        match &self {
+            WrappedPool::Sqlite(pool) => {
+                let applied_versions: HashSet<i64> = pool
+                    .acquire()
+                    .await?
+                    .list_applied_migrations()
+                    .await?
+                    .into_iter()
+                    .map(|m| m.version)
+                    .collect();
+
+                let migrator = sqlx::migrate!("./migrations/sqlite");
+                Ok(migrator.iter().map(|migration| {
+                    if applied_versions.contains(&migration.version) {
+                        (migration.clone(), true)
+                    } else {
+                        (migration.clone(), false)
+                    }
+                }).collect())
+            },
+            WrappedPool::Postgres(pool) => {
+                let applied_versions: HashSet<i64> = pool
+                    .acquire()
+                    .await?
+                    .list_applied_migrations()
+                    .await?
+                    .into_iter()
+                    .map(|m| m.version)
+                    .collect();
+
+                let migrator = sqlx::migrate!("./migrations/postgres");
+                Ok(migrator.iter().map(|migration| {
+                    let is_applied = applied_versions.contains(&migration.version);
+                    (migration.clone(), is_applied)
+                }).collect())
             }
         }
     }

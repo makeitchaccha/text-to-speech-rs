@@ -1,6 +1,7 @@
 mod cli;
 mod database;
 
+use std::env::Args;
 use anyhow::Context;
 use google_cloud_texttospeech_v1::client::TextToSpeech;
 use poise::serenity_prelude as serenity;
@@ -8,7 +9,7 @@ use poise::serenity_prelude::GatewayIntents;
 use songbird::SerenityInit;
 use sqlx::{migrate, AnyPool, Database, Pool, Postgres, Sqlite};
 use std::sync::Arc;
-use clap::Parser;
+use clap::{Arg, Parser};
 use text_to_speech_rs::config::{load_config, AppConfig, DatabaseConfig, DatabaseKind};
 use text_to_speech_rs::handler::event_handler;
 use text_to_speech_rs::localization::{load_discord_locales, load_tts_locales};
@@ -17,7 +18,7 @@ use text_to_speech_rs::profile::resolver::ProfileResolver;
 use text_to_speech_rs::session::manager::SessionManager;
 use text_to_speech_rs::tts::registry::VoicePackageRegistry;
 use text_to_speech_rs::{command, handler};
-use tracing::info;
+use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 use crate::cli::MigrateCommand;
 use crate::database::WrappedPool;
@@ -58,6 +59,18 @@ async fn cli_run(config: AppConfig, pool: WrappedPool, auto_migrate: bool) -> an
         pool.migrate_up().await?;
     } else {
         // just check only.
+        let status = pool.migrate_status().await?;
+        let pending_count = status.iter().filter(|(_, is_applied)| !*is_applied).count();
+
+        if pending_count > 0 {
+            // then there is a pending migration.
+            error!("Database schema is out of date ({} pending migrations).", pending_count);
+            error!("Details:");
+            for (m, _) in status.iter().filter(|(_, is_applied)| !*is_applied) {
+                error!("  ⚠️ PENDING [{}] {}", m.version, m.description);
+            }
+            anyhow::bail!("Please run '{} migrate up' or start with '--auto-migrate=true'.", std::env::args().next().unwrap_or("bot".to_string()));
+        }
     }
 
     let tts_locales = load_tts_locales("en")?;

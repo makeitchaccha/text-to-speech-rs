@@ -10,7 +10,7 @@ pub struct Cli {
 #[derive(Parser)]
 pub enum Commands {
     Run {
-        #[arg(long, default_value_t = true)]
+        #[arg(long, default_value_t = true, help = "Automatically run database migrations on startup")]
         auto_migrate: bool,
     },
     Migrate {
@@ -22,5 +22,5 @@ pub enum Commands {
 #[derive(Parser)]
 pub enum MigrateCommand {
     Up,
-    Status
+    Status,
 }
