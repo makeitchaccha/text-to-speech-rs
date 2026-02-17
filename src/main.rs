@@ -1,19 +1,15 @@
 mod cli;
 mod database;
 
-use std::env::Args;
 use anyhow::Context;
 use google_cloud_texttospeech_v1::client::TextToSpeech;
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::GatewayIntents;
 use songbird::SerenityInit;
-use sqlx::{migrate, AnyPool, Database, Pool, Postgres, Sqlite};
-use std::sync::Arc;
-use clap::{Arg, Parser};
+use clap::{Parser};
 use text_to_speech_rs::config::{load_config, AppConfig, DatabaseConfig, DatabaseKind};
 use text_to_speech_rs::handler::event_handler;
 use text_to_speech_rs::localization::{load_discord_locales, load_tts_locales};
-use text_to_speech_rs::profile::repository::ProfileRepository;
 use text_to_speech_rs::profile::resolver::ProfileResolver;
 use text_to_speech_rs::session::manager::SessionManager;
 use text_to_speech_rs::tts::registry::VoicePackageRegistry;

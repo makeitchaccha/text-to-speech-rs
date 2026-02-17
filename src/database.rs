@@ -1,8 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashSet};
 use std::sync::Arc;
-use sqlx::Acquire;
 use sqlx::migrate::{Migrate, Migration};
-use tracing::Instrument;
 use text_to_speech_rs::profile::repository::ProfileRepository;
 
 pub enum WrappedPool {
