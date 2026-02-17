@@ -36,11 +36,8 @@ impl WrappedPool {
 
                 let migrator = sqlx::migrate!("./migrations/sqlite");
                 Ok(migrator.iter().map(|migration| {
-                    if applied_versions.contains(&migration.version) {
-                        (migration.clone(), true)
-                    } else {
-                        (migration.clone(), false)
-                    }
+                    let is_applied = applied_versions.contains(&migration.version);
+                    (migration.clone(), is_applied)
                 }).collect())
             },
             WrappedPool::Postgres(pool) => {
