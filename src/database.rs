@@ -17,7 +17,7 @@ impl WrappedPool {
                 Ok(())
             },
             WrappedPool::Postgres(pool) => {
-                sqlx::migrate!("./migrations/postgres").run(pool).await.context("Failed to run postgres migrations")?;
+                sqlx::migrate!("./migrations/postgres").run(pool).await.context("Failed to run PostgreSQL migrations")?;
                 Ok(())
             }
         }
