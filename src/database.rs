@@ -1,5 +1,6 @@
 use std::collections::{HashSet};
 use std::sync::Arc;
+use anyhow::Context;
 use sqlx::migrate::{Migrate, Migration};
 use text_to_speech_rs::profile::repository::ProfileRepository;
 
@@ -12,11 +13,11 @@ impl WrappedPool {
     pub async fn migrate_up(&self) -> anyhow::Result<()> {
         match &self {
             WrappedPool::Sqlite(pool) => {
-                sqlx::migrate!("./migrations/sqlite").run(pool).await?;
+                sqlx::migrate!("./migrations/sqlite").run(pool).await.context("Failed to run SQLite migrations")?;
                 Ok(())
             },
             WrappedPool::Postgres(pool) => {
-                sqlx::migrate!("./migrations/postgres").run(pool).await?;
+                sqlx::migrate!("./migrations/postgres").run(pool).await.context("Failed to run postgres migrations")?;
                 Ok(())
             }
         }
