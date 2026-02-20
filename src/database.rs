@@ -1,7 +1,7 @@
 use std::collections::{HashSet};
 use std::sync::Arc;
 use anyhow::Context;
-use sqlx::migrate::{Migrate, Migration};
+use sqlx::migrate::{AppliedMigration, Migrate, Migration};
 use text_to_speech_rs::profile::repository::ProfileRepository;
 
 pub enum WrappedPool {
@@ -23,16 +23,11 @@ impl WrappedPool {
         }
     }
 
-    async fn collect_migration_status_for_conn<C>(
-        conn: &mut C,
+    async fn collect_migration_status(
+        applied_migration: Vec<AppliedMigration>,
         migrator: &sqlx::migrate::Migrator,
-    ) -> anyhow::Result<Vec<(Migration, bool)>>
-    where
-        C: Migrate,
-    {
-        let applied_versions: HashSet<i64> = conn
-            .list_applied_migrations()
-            .await?
+    ) -> anyhow::Result<Vec<(Migration, bool)>> {
+        let applied_versions: HashSet<i64> = applied_migration
             .into_iter()
             .map(|m| m.version)
             .collect();
@@ -51,12 +46,12 @@ impl WrappedPool {
             WrappedPool::Sqlite(pool) => {
                 let migrator = sqlx::migrate!("./migrations/sqlite");
                 let mut conn = pool.acquire().await?;
-                Self::collect_migration_status_for_conn(&mut conn, &migrator).await
+                Self::collect_migration_status(conn.list_applied_migrations().await?, &migrator).await
             },
             WrappedPool::Postgres(pool) => {
                 let migrator = sqlx::migrate!("./migrations/postgres");
                 let mut conn = pool.acquire().await?;
-                Self::collect_migration_status_for_conn(&mut conn, &migrator).await
+                Self::collect_migration_status(conn.list_applied_migrations().await?, &migrator).await
             }
         }
     }
