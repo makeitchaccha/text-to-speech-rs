@@ -23,39 +23,40 @@ impl WrappedPool {
         }
     }
 
+    async fn collect_migration_status_for_conn<C>(
+        conn: &mut C,
+        migrator: &sqlx::migrate::Migrator,
+    ) -> anyhow::Result<Vec<(Migration, bool)>>
+    where
+        C: Migrate,
+    {
+        let applied_versions: HashSet<i64> = conn
+            .list_applied_migrations()
+            .await?
+            .into_iter()
+            .map(|m| m.version)
+            .collect();
+
+        Ok(migrator
+            .iter()
+            .map(|migration| {
+                let is_applied = applied_versions.contains(&migration.version);
+                (migration.clone(), is_applied)
+            })
+            .collect())
+    }
+
     pub async fn migrate_status(&self) -> anyhow::Result<Vec<(Migration, bool)>> {
         match &self {
             WrappedPool::Sqlite(pool) => {
-                let applied_versions: HashSet<i64> = pool
-                    .acquire()
-                    .await?
-                    .list_applied_migrations()
-                    .await?
-                    .into_iter()
-                    .map(|m| m.version)
-                    .collect();
-
                 let migrator = sqlx::migrate!("./migrations/sqlite");
-                Ok(migrator.iter().map(|migration| {
-                    let is_applied = applied_versions.contains(&migration.version);
-                    (migration.clone(), is_applied)
-                }).collect())
+                let mut conn = pool.acquire().await?;
+                Self::collect_migration_status_for_conn(&mut conn, &migrator).await
             },
             WrappedPool::Postgres(pool) => {
-                let applied_versions: HashSet<i64> = pool
-                    .acquire()
-                    .await?
-                    .list_applied_migrations()
-                    .await?
-                    .into_iter()
-                    .map(|m| m.version)
-                    .collect();
-
                 let migrator = sqlx::migrate!("./migrations/postgres");
-                Ok(migrator.iter().map(|migration| {
-                    let is_applied = applied_versions.contains(&migration.version);
-                    (migration.clone(), is_applied)
-                }).collect())
+                let mut conn = pool.acquire().await?;
+                Self::collect_migration_status_for_conn(&mut conn, &migrator).await
             }
         }
     }
