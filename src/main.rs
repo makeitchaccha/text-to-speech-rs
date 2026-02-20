@@ -1,34 +1,83 @@
+mod cli;
+mod database;
+
 use anyhow::Context;
 use google_cloud_texttospeech_v1::client::TextToSpeech;
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::GatewayIntents;
 use songbird::SerenityInit;
-use sqlx::{Pool, Postgres, Sqlite};
-use std::sync::Arc;
-use text_to_speech_rs::config::{load_config, DatabaseConfig, DatabaseKind};
+use clap::{Parser};
+use text_to_speech_rs::config::{load_config, AppConfig, DatabaseConfig, DatabaseKind};
 use text_to_speech_rs::handler::event_handler;
 use text_to_speech_rs::localization::{load_discord_locales, load_tts_locales};
-use text_to_speech_rs::profile::repository::ProfileRepository;
 use text_to_speech_rs::profile::resolver::ProfileResolver;
 use text_to_speech_rs::session::manager::SessionManager;
 use text_to_speech_rs::tts::registry::VoicePackageRegistry;
 use text_to_speech_rs::{command, handler};
-use tracing::info;
+use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
+use crate::cli::MigrateCommand;
+use crate::database::WrappedPool;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let cli = cli::Cli::parse();
+
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
+
+    let config = load_config("config.toml")
+        .context("Failed to load config.toml")?;
+
+    let pool = prepare_database(&config.database).await?;
+
+    match cli.command {
+        cli::Commands::Run { auto_migrate } => {
+            cli_run(config, pool, auto_migrate).await
+        },
+        cli::Commands::Migrate { command } => {
+            match command {
+                MigrateCommand::Up => {
+                    pool.migrate_up().await?;
+                    Ok(())
+                },
+                MigrateCommand::Status => {
+                    let status = pool.migrate_status().await?;
+                    for (m, is_applied) in status {
+                        let mark = if is_applied { "✅" } else { "⚠️ PENDING" };
+                        println!("{} [{}] {}", mark, m.version, m.description);
+                    }
+                    Ok(())
+                }
+            }
+        },
+    }
+}
+
+async fn cli_run(config: AppConfig, pool: WrappedPool, auto_migrate: bool) -> anyhow::Result<()> {
+    if auto_migrate {
+        pool.migrate_up().await?;
+    } else {
+        // just check only.
+        let status = pool.migrate_status().await?;
+        let pending_count = status.iter().filter(|(_, is_applied)| !*is_applied).count();
+
+        if pending_count > 0 {
+            // then there is a pending migration.
+            error!("Database schema is out of date ({} pending migrations).", pending_count);
+            error!("Details:");
+            for (m, _) in status.iter().filter(|(_, is_applied)| !*is_applied) {
+                error!("⚠️ PENDING [{}] {}", m.version, m.description);
+            }
+            anyhow::bail!("Please run '{} migrate up' or start with '--auto-migrate=true'.", std::env::args().next().unwrap_or("bot".to_string()));
+        }
+    }
 
     let tts_locales = load_tts_locales("en")?;
     let discord_locales = load_discord_locales("en-US")?;
 
     info!("Starting text-to-speech bot");
-
-    let config = load_config("config.toml")
-        .context("Failed to load config.toml")?;
 
     config.verify()?;
 
@@ -49,7 +98,7 @@ async fn main() -> anyhow::Result<()> {
 
     info!("VoiceRegistry built successfully.");
 
-    let repository = prepare_repository(&config.database).await?;
+    let repository = pool.profile_repository();
 
     let resolver = ProfileResolver::new(repository.clone(), config.bot.global_profile.clone());
 
@@ -89,15 +138,13 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn prepare_repository(config: &DatabaseConfig) -> anyhow::Result<Arc<dyn ProfileRepository>> {
+async fn prepare_database(config: &DatabaseConfig) -> anyhow::Result<WrappedPool> {
     match config.kind {
         DatabaseKind::SQLite => {
             #[cfg(feature = "sqlite")]
             {
-                use text_to_speech_rs::profile::repository::sqlite::SQLiteProfileRepository;
                 info!("Opening SQLite database...");
-                let pool: Pool<Sqlite> = sqlx::SqlitePool::connect(&config.url).await?;
-                Ok(Arc::new(SQLiteProfileRepository::new(pool)))
+                Ok(WrappedPool::Sqlite(sqlx::SqlitePool::connect(&config.url).await?))
             }
             #[cfg(not(feature = "sqlite"))]
             anyhow::bail!("SQLite selected, but 'sqlite' feature is not enabled.")
@@ -105,10 +152,8 @@ async fn prepare_repository(config: &DatabaseConfig) -> anyhow::Result<Arc<dyn P
         DatabaseKind::Postgres => {
             #[cfg(feature = "postgres")]
             {
-                use text_to_speech_rs::profile::repository::postgres::PostgresRepository;
                 info!("Connecting to PostgreSQL...");
-                let pool: Pool<Postgres> = sqlx::PgPool::connect(&config.url).await?;
-                Ok(Arc::new(PostgresRepository::new(pool)))
+                Ok(WrappedPool::Postgres(sqlx::PgPool::connect(&config.url).await?))
             }
             #[cfg(not(feature = "postgres"))]
             anyhow::bail!("PostgreSQL selected, but 'postgres' feature is not enabled.")
