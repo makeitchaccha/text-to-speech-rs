@@ -133,6 +133,11 @@ async fn cli_run(config: AppConfig, pool: WrappedPool, auto_migrate: bool) -> an
         .register_songbird()
         .framework(framework).await?;
 
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install default CryptoProvider");
+    info!("Initialized crypto provider");
+
     client.start().await?;
 
     Ok(())
