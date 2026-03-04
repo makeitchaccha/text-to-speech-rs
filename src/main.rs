@@ -1,7 +1,7 @@
 mod cli;
 mod database;
 
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use google_cloud_texttospeech_v1::client::TextToSpeech;
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::GatewayIntents;
@@ -26,6 +26,11 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
+
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .map_err(|_| anyhow!("CryptoProvider was already installed"))?;
+    info!("Initialized CryptoProvider");
 
     let config = load_config("config.toml")
         .context("Failed to load config.toml")?;
@@ -132,11 +137,6 @@ async fn cli_run(config: AppConfig, pool: WrappedPool, auto_migrate: bool) -> an
     let mut client = serenity::ClientBuilder::new(config.bot.token, intents)
         .register_songbird()
         .framework(framework).await?;
-
-    rustls::crypto::ring::default_provider()
-        .install_default()
-        .expect("Failed to install default CryptoProvider");
-    info!("Initialized crypto provider");
 
     client.start().await?;
 
