@@ -66,6 +66,37 @@ pub async fn event_handler(
                     ).await?;
                 }
             }
+
+            let left_channel = match voice_state_update_kind(old, new) {
+                ChannelTransition::Move { old_channel_id, new_channel_id: _ } => {
+                    Some(old_channel_id)
+                },
+                ChannelTransition::Disconnect { old_channel_id } => {
+                    Some(old_channel_id)
+                },
+                _ => None,
+            };
+
+            if let Some(channel_id) = left_channel &&
+                let Some(session) = data.session_manager.get_by_voice_channel(channel_id)
+            {
+                let is_channel_empty = guild_id.to_guild_cached(&ctx.cache).unwrap().voice_states.iter().all(|(&user_id, voice_state)| {
+                    // ignore leaving user
+                    if user_id == new.user_id {
+                        return true;
+                    }
+                    // ignore bot
+                    if voice_state.user_id.to_user_cached(&ctx.cache).map(|u| u.bot).unwrap_or(true) {
+                        return true;
+                    }
+                    // ensure
+                    voice_state.channel_id != left_channel
+                });
+
+                if is_channel_empty {
+                    session.handle.leave().await?;
+                }
+            }
         }
 
         serenity::FullEvent::Message { new_message } => {
