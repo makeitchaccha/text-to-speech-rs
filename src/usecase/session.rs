@@ -1,15 +1,10 @@
-use std::sync::Arc;
-use anyhow::Context;
-use poise::CreateReply;
-use poise::serenity_prelude as serenity;
-use poise::serenity_prelude::{ChannelId, CreateEmbed, Guild, GuildId};
 use crate::handler::Data;
-use crate::localization::Locales;
-use crate::profile::resolver::ProfileResolver;
 use crate::session::actor::SessionActor;
 use crate::session::driver::SongbirdDriver;
-use crate::session::manager::SessionManager;
-use crate::tts::registry::VoicePackageRegistry;
+use anyhow::Context;
+use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{ChannelId, GuildId};
+use std::sync::Arc;
 
 pub async fn start(ctx: &serenity::Context, data: &Data, guild_id: GuildId, text_channel_id: ChannelId, voice_channel_id: ChannelId) -> anyhow::Result<()> {
     let manager = songbird::get(ctx)
