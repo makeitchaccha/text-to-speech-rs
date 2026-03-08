@@ -41,7 +41,7 @@ async fn main() -> anyhow::Result<()> {
             .context("Failed to create data directory")?;
     }
 
-    let config = load_config(cli.config.to_str().ok_or(anyhow!("Invalid config path"))?)
+    let config = load_config(cli.config.as_path())
         .with_context(|| format!("Failed to load config from {}", cli.config.display()))?;
 
     let pool = prepare_database(&config.database).await?;
