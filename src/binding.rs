@@ -68,6 +68,7 @@ impl BindingRepository {
                 let mut table = tx.open_table(BINDINGS_TABLE)?;
                 table.remove(guild.get())?;
             }
+            tx.commit()?;
             Ok(())
         }).await??;
 
