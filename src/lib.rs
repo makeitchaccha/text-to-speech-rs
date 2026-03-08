@@ -6,3 +6,4 @@ pub mod command;
 pub mod profile;
 mod sanitizer;
 pub mod localization;
+pub mod binding;
