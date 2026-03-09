@@ -36,10 +36,8 @@ impl ProfileResolver {
     }
 
     pub async fn resolve_guild_with_fallback(&self, guild_id: GuildId) -> Result<ResolvedProfile> {
-        if let Some(_profile_id) = self.repository.find_by_guild(guild_id).await? {
-            return Ok(ResolvedProfile::guild_default(
-                self.fallback_profile_id.clone(),
-            ));
+        if let Some(profile_id) = self.repository.find_by_guild(guild_id).await? {
+            return Ok(ResolvedProfile::guild_default(profile_id));
         }
 
         Ok(ResolvedProfile::global_fallback(
@@ -129,6 +127,34 @@ mod tests {
         let result = ctx
             .resolver
             .resolve_with_fallback(UserId::from(1), GuildId::from(1))
+            .await
+            .unwrap();
+
+        assert_eq!(result.source, ProfileSource::GlobalFallback);
+        assert_eq!(result.id, "fallback-profile");
+    }
+
+    #[tokio::test]
+    async fn guild_profile_takes_precedence_over_fallback() {
+        let ctx = TestContext::new().with_guild_profile(1, "guild-P").await;
+
+        let result = ctx
+            .resolver
+            .resolve_guild_with_fallback(GuildId::from(1))
+            .await
+            .unwrap();
+
+        assert_eq!(result.source, ProfileSource::GuildDefault);
+        assert_eq!(result.id, "guild-P");
+    }
+
+    #[tokio::test]
+    async fn guild_returns_fallback_if_nothing_configured() {
+        let ctx = TestContext::new();
+
+        let result = ctx
+            .resolver
+            .resolve_guild_with_fallback(GuildId::from(1))
             .await
             .unwrap();
 
