@@ -79,9 +79,9 @@ impl From<GoogleCloudVoiceConfig> for (VoiceSelectionParams, AudioConfig) {
     fn from(c: GoogleCloudVoiceConfig) -> (VoiceSelectionParams, AudioConfig) {
         let params = VoiceSelectionParams::new()
             .set_language_code(&c.language_code)
-            .set_name(&c.name.unwrap_or_default())
+            .set_name(c.name.unwrap_or_default())
             .set_ssml_gender(c.ssml_gender.unwrap_or_default())
-            .set_model_name(&c.model_name.unwrap_or_default());
+            .set_model_name(c.model_name.unwrap_or_default());
 
         let audio = AudioConfig::new()
             .set_audio_encoding(AudioEncoding::Pcm)

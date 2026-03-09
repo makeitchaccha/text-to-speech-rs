@@ -65,6 +65,12 @@ pub mod test_utils {
         }
     }
 
+    impl Default for MockVoice {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
     #[async_trait]
     impl Voice for MockVoice {
         fn identifier(&self) -> &str {

@@ -89,10 +89,10 @@ impl LocaleSearchPolicy {
         let mut candidates = Vec::new();
         candidates.push(locale);
 
-        if let LocaleMatchingMode::Cascading { delimiter } = self.mode {
-            if let Some((language, _)) = locale.split_once(delimiter) {
-                candidates.push(language)
-            }
+        if let LocaleMatchingMode::Cascading { delimiter } = self.mode
+            && let Some((language, _)) = locale.split_once(delimiter)
+        {
+            candidates.push(language)
         }
 
         if !candidates.contains(&self.fallback.as_str()) {

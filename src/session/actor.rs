@@ -205,7 +205,7 @@ impl SessionActor {
     ) -> anyhow::Result<usize> {
         let mut audios = Vec::new();
         for segment in segment.iter() {
-            let audio_data = match voice.generate(&segment).await {
+            let audio_data = match voice.generate(segment).await {
                 Ok(data) => data,
                 Err(e) => {
                     return Err(anyhow::anyhow!(e).context("Failed to generate voice"));
