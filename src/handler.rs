@@ -112,7 +112,7 @@ pub async fn event_handler(
                     })
                     .map(|(&user_id, _)| {
                         let ctx = ctx.clone();
-                        async move { user_id.to_user(ctx).await.map(|u| !u.bot).unwrap_or(false) }
+                        async move { user_id.to_user(ctx).await.map(|u| !u.bot).unwrap_or(true) }
                     })
                     .collect::<Vec<_>>();
 
