@@ -89,18 +89,17 @@ pub async fn event_handler(
                     && binding.voice == new_channel_id
                 {
                     // On connection, bot tries to detect first incoming user (either human or bot)
-                    let in_room_members_count = ctx
+                    let has_other_members_in_room = ctx
                         .cache
                         .guild(guild_id)
                         .ok_or_else(|| anyhow!("guild not found"))?
                         .voice_states
                         .iter()
-                        .filter(|&(&user_id, voice_state)| {
+                        .any(|(&user_id, voice_state)| {
                             voice_state.channel_id == Some(new_channel_id) && user_id != new.user_id
-                        })
-                        .count();
+                        });
 
-                    if in_room_members_count == 0 {
+                    if !has_other_members_in_room {
                         usecase::session::start(ctx, data, guild_id, binding.text, binding.voice)
                             .await?;
                     }
