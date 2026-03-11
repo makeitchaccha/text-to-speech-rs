@@ -1,5 +1,6 @@
 use crate::tts::VoiceDetail;
 use crate::tts::google_cloud::GoogleCloudVoiceConfig;
+use crate::tts::voicevox::VoicevoxVoiceConfig;
 use anyhow::anyhow;
 use config::{Config, File};
 use serde::Deserialize;
@@ -69,16 +70,24 @@ pub struct DatabaseConfig {
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct BackendConfig {
     pub google_cloud: Option<GoogleCloudBackendConfig>,
+    pub voicevox: Option<VoicevoxBackendConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct GoogleCloudBackendConfig {
+    pub enabled: bool,
     #[serde(default = "default_timeout")]
     pub timeout: u64,
 }
 
 fn default_timeout() -> u64 {
     5
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct VoicevoxBackendConfig {
+    pub enabled: bool,
+    pub url: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -128,12 +137,15 @@ impl VoiceDetailConfig {
 pub enum ProfileBackendConfig {
     #[serde(rename = "google_cloud")]
     GoogleCloudVoice(GoogleCloudVoiceConfig),
+    #[serde(rename = "voicevox")]
+    VoicevoxVoice(VoicevoxVoiceConfig),
 }
 
 impl ProfileBackendConfig {
     pub fn generate_default_detail(&self, name: &str) -> VoiceDetail {
         match &self {
             ProfileBackendConfig::GoogleCloudVoice(config) => config.generate_default_detail(name),
+            ProfileBackendConfig::VoicevoxVoice(config) => config.generate_default_detail(name),
         }
     }
 }
