@@ -1,7 +1,33 @@
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::tts::{Voice, VoiceDetail, VoiceError};
+
+#[derive(Serialize, Deserialize)]
+struct LazyAudioQuery {
+    accent_phrases: Box<serde_json::value::RawValue>,
+    #[serde(rename = "speedScale")]
+    speed_scale: f64,
+    #[serde(rename = "pitchScale")]
+    pitch_scale: f64,
+    #[serde(rename = "intonationScale")]
+    intonation_scale: f64,
+    #[serde(rename = "volumeScale")]
+    volume_scale: f64,
+    #[serde(rename = "prePhonemeLength")]
+    pre_phoneme_length: f64,
+    #[serde(rename = "postPhonemeLength")]
+    post_phoneme_length: f64,
+    #[serde(rename = "pauseLength")]
+    pause_length: Option<f64>,
+    #[serde(rename = "pauseLengthScale")]
+    pause_length_scale: Option<f64>,
+    #[serde(rename = "outputSamplingRate")]
+    output_sampling_rate: u32,
+    #[serde(rename = "outputStereo")]
+    output_stereo: bool,
+    kana: Option<String>,
+}
 
 /// minimum client for Voicevox
 #[derive(Clone)]
@@ -15,7 +41,7 @@ impl Client {
         Client { http, base_url }
     }
 
-    async fn audio_query(&self, text: &str, speaker: i32) -> anyhow::Result<String> {
+    async fn audio_query(&self, text: &str, speaker: i32) -> anyhow::Result<LazyAudioQuery> {
         let url = self.base_url.join("audio_query")?;
         let res = self
             .http
@@ -25,11 +51,15 @@ impl Client {
             .send()
             .await?;
 
-        let body = res.text().await?;
+        let body: LazyAudioQuery = res.json().await?;
         Ok(body)
     }
 
-    async fn synthesis(&self, speaker: i32, body: String) -> anyhow::Result<Vec<u8>> {
+    async fn synthesis(
+        &self,
+        speaker: i32,
+        audio_query: LazyAudioQuery,
+    ) -> anyhow::Result<Vec<u8>> {
         let url = self.base_url.join("synthesis")?;
         let res = self
             .http
@@ -37,7 +67,7 @@ impl Client {
             .query(&[("speaker", &speaker.to_string())])
             .header(reqwest::header::CONTENT_TYPE, "application/json")
             .header(reqwest::header::ACCEPT, "audio/wav")
-            .body(body)
+            .json(&audio_query)
             .send()
             .await?;
 
@@ -92,14 +122,15 @@ impl Voice for VoicevoxVoice {
     }
 
     async fn generate(&self, text: &str) -> Result<Vec<u8>, VoiceError> {
-        let res_audio_query = self
+        let audio_query = self
             .client
             .audio_query(text, self.speaker_id)
             .await
             .map_err(VoiceError::Api)?;
+
         let res_synthesis = self
             .client
-            .synthesis(self.speaker_id, res_audio_query)
+            .synthesis(self.speaker_id, audio_query)
             .await
             .map_err(VoiceError::Api)?;
 
