@@ -9,9 +9,11 @@ use google_cloud_texttospeech_v1::client::TextToSpeech;
 use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::GatewayIntents;
 use redb::Database;
+use reqwest::Url;
 use songbird::SerenityInit;
 use std::path::Path;
 use std::sync::Arc;
+use std::time::Duration;
 use text_to_speech_rs::binding::BindingRepository;
 use text_to_speech_rs::config::{AppConfig, DatabaseConfig, DatabaseKind, load_config};
 use text_to_speech_rs::handler::event_handler;
@@ -19,6 +21,7 @@ use text_to_speech_rs::localization::{load_discord_locales, load_tts_locales};
 use text_to_speech_rs::profile::resolver::ProfileResolver;
 use text_to_speech_rs::session::manager::SessionManager;
 use text_to_speech_rs::tts::registry::VoicePackageRegistry;
+use text_to_speech_rs::tts::voicevox;
 use text_to_speech_rs::{command, handler};
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
@@ -107,11 +110,29 @@ async fn cli_run(
 
     let mut registry_builder = VoicePackageRegistry::builder(config.clone());
 
-    if let Some(_google_cloud_config) = &config.backend.google_cloud {
+    if config
+        .backend
+        .google_cloud
+        .is_some_and(|config| config.enabled)
+    {
         info!("Using Google Cloud credentials");
         let client = TextToSpeech::builder().build().await?;
 
         registry_builder = registry_builder.google_cloud(client);
+    }
+
+    if let Some(c) = config.backend.voicevox
+        && c.enabled
+    {
+        info!("Using Voicevox");
+        let client = voicevox::Client::new(
+            reqwest::ClientBuilder::new()
+                .timeout(Duration::from_secs(c.timeout))
+                .build()?,
+            Url::parse(&c.url)?,
+        );
+
+        registry_builder = registry_builder.voicevox(client);
     }
 
     let registry = registry_builder

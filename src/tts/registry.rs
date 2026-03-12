@@ -1,7 +1,8 @@
 use crate::config::{AppConfig, CacheConfig, ProfileBackendConfig};
 use crate::tts::cache::CachedVoice;
 use crate::tts::google_cloud::GoogleCloudVoice;
-use crate::tts::{Voice, VoiceDetail};
+use crate::tts::voicevox::VoicevoxVoice;
+use crate::tts::{Voice, VoiceDetail, voicevox};
 use anyhow::Context;
 use google_cloud_texttospeech_v1::client::TextToSpeech;
 use moka::future::Cache;
@@ -50,6 +51,7 @@ pub struct VoiceRegistryBuilder {
     config: AppConfig,
     moka_cache: Option<Cache<String, Vec<u8>>>,
     google_cloud: Option<TextToSpeech>,
+    voicevox: Option<voicevox::Client>,
 }
 
 impl VoiceRegistryBuilder {
@@ -63,11 +65,17 @@ impl VoiceRegistryBuilder {
             config,
             moka_cache,
             google_cloud: None,
+            voicevox: None,
         }
     }
 
     pub fn google_cloud(mut self, google_cloud: TextToSpeech) -> Self {
         self.google_cloud = Some(google_cloud);
+        self
+    }
+
+    pub fn voicevox(mut self, voicevox: voicevox::Client) -> Self {
+        self.voicevox = Some(voicevox);
         self
     }
 
@@ -91,6 +99,16 @@ impl VoiceRegistryBuilder {
                         .clone();
 
                     self.wrap_with_cache(Box::new(GoogleCloudVoice::new(client, c.clone())))
+                }
+                ProfileBackendConfig::VoicevoxVoice(c) => {
+                    let client = self.voicevox.as_ref()
+                        .with_context(|| format!(
+                            "Preset '{}' requires the VoiceVox backend, but it is not configured. Please verify that [backend.voicevox] exists and that 'enabled = true' and a valid 'url' are set in config.toml.",
+                            id
+                        ))?
+                        .clone();
+
+                    self.wrap_with_cache(Box::new(VoicevoxVoice::new(client, c.clone())))
                 }
             };
 

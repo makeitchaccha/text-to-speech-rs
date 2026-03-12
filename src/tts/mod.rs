@@ -1,6 +1,7 @@
 mod cache;
 pub mod google_cloud;
 pub mod registry;
+pub mod voicevox;
 
 use async_trait::async_trait;
 
