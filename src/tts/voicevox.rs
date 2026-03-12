@@ -72,12 +72,8 @@ impl Client {
             .query(&[("text", text), ("speaker", &speaker.to_string())])
             .header(reqwest::header::ACCEPT, "application/json")
             .send()
-            .await?;
-
-        if !res.status().is_success() {
-            let body = res.text().await?;
-            return Err(anyhow::anyhow!(body));
-        }
+            .await?
+            .error_for_status()?;
 
         let audio_query: LazyAudioQuery = res.json().await?;
         Ok(audio_query)
@@ -97,12 +93,8 @@ impl Client {
             .header(reqwest::header::ACCEPT, "audio/wav")
             .json(&audio_query)
             .send()
-            .await?;
-
-        if !res.status().is_success() {
-            let body = res.text().await?;
-            return Err(anyhow::anyhow!(body));
-        }
+            .await?
+            .error_for_status()?;
 
         Ok(res.bytes().await?.to_vec())
     }
