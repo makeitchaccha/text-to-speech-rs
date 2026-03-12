@@ -65,7 +65,7 @@ impl Client {
     }
 
     async fn audio_query(&self, text: &str, speaker: i32) -> anyhow::Result<LazyAudioQuery> {
-        let url = self.base_url.join("audio_query")?;
+        let url = self.base_url.join("/audio_query")?;
         let res = self
             .http
             .post(url)
@@ -84,7 +84,7 @@ impl Client {
         speaker: i32,
         audio_query: LazyAudioQuery,
     ) -> anyhow::Result<Vec<u8>> {
-        let url = self.base_url.join("synthesis")?;
+        let url = self.base_url.join("/synthesis")?;
         let res = self
             .http
             .post(url)
