@@ -21,7 +21,7 @@ impl Client {
             .http
             .post(url)
             .query(&[("text", text), ("speaker", &speaker.to_string())])
-            .header("accept", "application/json")
+            .header(reqwest::header::ACCEPT, "application/json")
             .send()
             .await?;
 
@@ -35,7 +35,8 @@ impl Client {
             .http
             .post(url)
             .query(&[("speaker", &speaker.to_string())])
-            .header("accept", "audio/wav")
+            .header(reqwest::header::CONTENT_TYPE, "application/json")
+            .header(reqwest::header::ACCEPT, "audio/wav")
             .body(body)
             .send()
             .await?;
