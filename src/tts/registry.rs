@@ -108,7 +108,7 @@ impl VoiceRegistryBuilder {
                         ))?
                         .clone();
 
-                    self.wrap_with_cache(Box::new(VoicevoxVoice::new(client, c.speaker_id)))
+                    self.wrap_with_cache(Box::new(VoicevoxVoice::new(client, c.clone())))
                 }
             };
 

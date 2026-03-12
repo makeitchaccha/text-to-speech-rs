@@ -29,6 +29,29 @@ struct LazyAudioQuery {
     kana: Option<String>,
 }
 
+impl LazyAudioQuery {
+    pub fn apply_config(&mut self, config: &VoicevoxVoiceConfig) {
+        if let Some(s) = config.speed_scale {
+            self.speed_scale = s;
+        }
+        if let Some(p) = config.pitch_scale {
+            self.pitch_scale = p;
+        }
+        if let Some(i) = config.intonation_scale {
+            self.intonation_scale = i;
+        }
+        if let Some(v) = config.volume_scale {
+            self.volume_scale = v;
+        }
+        if let Some(l) = config.pre_phoneme_length {
+            self.pre_phoneme_length = l;
+        }
+        if let Some(l) = config.post_phoneme_length {
+            self.post_phoneme_length = l;
+        }
+    }
+}
+
 /// minimum client for Voicevox
 #[derive(Clone)]
 pub struct Client {
@@ -75,9 +98,15 @@ impl Client {
     }
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct VoicevoxVoiceConfig {
     pub speaker_id: i32,
+    pub speed_scale: Option<f64>,
+    pub pitch_scale: Option<f64>,
+    pub intonation_scale: Option<f64>,
+    pub volume_scale: Option<f64>,
+    pub pre_phoneme_length: Option<f64>,
+    pub post_phoneme_length: Option<f64>,
 }
 
 impl VoicevoxVoiceConfig {
@@ -93,21 +122,24 @@ impl VoicevoxVoiceConfig {
 pub struct VoicevoxVoice {
     identifier: String,
     client: Client,
-    speaker_id: i32,
+    config: VoicevoxVoiceConfig,
 }
 
 impl VoicevoxVoice {
-    pub fn new(client: Client, speaker_id: i32) -> VoicevoxVoice {
-        let identifier = Self::build_identifier(speaker_id);
+    pub fn new(client: Client, config: VoicevoxVoiceConfig) -> VoicevoxVoice {
+        let identifier = Self::build_identifier(&config);
         Self {
             identifier,
             client,
-            speaker_id,
+            config,
         }
     }
 
-    fn build_identifier(speaker_id: i32) -> String {
-        format!("voicevox-(id:{})", speaker_id)
+    fn build_identifier(config: &VoicevoxVoiceConfig) -> String {
+        format!(
+            "voicevox-({})",
+            serde_json::to_string(config).expect("failed to build identifier")
+        )
     }
 }
 
@@ -122,15 +154,17 @@ impl Voice for VoicevoxVoice {
     }
 
     async fn generate(&self, text: &str) -> Result<Vec<u8>, VoiceError> {
-        let audio_query = self
+        let mut audio_query = self
             .client
-            .audio_query(text, self.speaker_id)
+            .audio_query(text, self.config.speaker_id)
             .await
             .map_err(VoiceError::Api)?;
 
+        audio_query.apply_config(&self.config);
+
         let res_synthesis = self
             .client
-            .synthesis(self.speaker_id, audio_query)
+            .synthesis(self.config.speaker_id, audio_query)
             .await
             .map_err(VoiceError::Api)?;
 
