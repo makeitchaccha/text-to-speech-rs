@@ -103,7 +103,7 @@ impl VoiceRegistryBuilder {
                 ProfileBackendConfig::VoicevoxVoice(c) => {
                     let client = self.voicevox.as_ref()
                         .with_context(|| format!(
-                            "Preset '{}' requires Google Cloud backend, but it is not configured. Please verify that [backend.google_cloud] exists and 'enabled = true' in config.toml.",
+                            "Preset '{}' requires the VoiceVox backend, but it is not configured. Please verify that [backend.voicevox] exists and that 'enabled = true' and a valid 'url' are set in config.toml.",
                             id
                         ))?
                         .clone();
