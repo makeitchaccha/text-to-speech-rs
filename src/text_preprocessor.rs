@@ -9,7 +9,7 @@ static EMOJI_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<a?:(\w+):\d
 static CODE_BLOCK_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"```(?:\w*\n)?(.*?)```").unwrap());
 
-pub fn replace_mentions(
+pub fn normalize_mentions(
     content: &str,
     ctx: &serenity::Context,
     guild_id: GuildId,
@@ -50,14 +50,24 @@ pub fn replace_mentions(
     Ok(content)
 }
 
-pub fn sanitize(content: &str, limit: usize) -> String {
-    let mut content = CODE_BLOCK_REGEX
+pub fn normalize_urls(content: &str) -> String {
+    URL_REGEX.replace_all(content, "URL").to_string()
+}
+
+pub fn normalize_emojis(content: &str) -> String {
+    EMOJI_REGEX.replace_all(content, "EMOJI").to_string()
+}
+
+pub fn normalize_code_blocks(content: &str) -> String {
+    CODE_BLOCK_REGEX
         .replace_all(content, "code block")
-        .to_string();
+        .to_string()
+}
 
-    content = URL_REGEX.replace_all(&content, "URL").to_string();
-
-    content = EMOJI_REGEX.replace_all(&content, "EMOJI").to_string();
+pub fn preprocess(content: &str, limit: usize) -> String {
+    let content = normalize_code_blocks(content);
+    let content = normalize_urls(&content);
+    let content = normalize_emojis(&content);
 
     content.chars().take(limit).collect()
 }

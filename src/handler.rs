@@ -5,7 +5,7 @@ use crate::profile::resolver::ProfileResolver;
 use crate::session::manager::SessionManager;
 use crate::session::{SessionHandle, Speaker};
 use crate::tts::registry::VoicePackageRegistry;
-use crate::{sanitizer, usecase};
+use crate::{text_preprocessor, usecase};
 use anyhow::{Context, anyhow};
 use fluent::fluent_args;
 use poise::serenity_prelude as serenity;
@@ -195,7 +195,7 @@ pub async fn event_handler(
                     .ok_or(anyhow::anyhow!("Message does not contain guild ID"))?;
 
                 let text = new_message.content.clone();
-                let text = sanitizer::replace_mentions(
+                let text = text_preprocessor::normalize_mentions(
                     &text,
                     ctx,
                     guild_id,
@@ -203,7 +203,7 @@ pub async fn event_handler(
                     &new_message.mention_roles,
                     &new_message.mention_channels,
                 )?;
-                let text = sanitizer::sanitize(&text, 300);
+                let text = text_preprocessor::preprocess(&text, 300);
 
                 let name = guild_id
                     .to_guild_cached(ctx.cache.as_ref())
