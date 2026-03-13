@@ -4,7 +4,7 @@ pub mod config;
 pub mod handler;
 pub mod localization;
 pub mod profile;
-mod sanitizer;
 pub mod session;
+mod text_preprocessor;
 pub mod tts;
 pub mod usecase;
