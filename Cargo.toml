@@ -3,6 +3,9 @@ name = "text-to-speech-rs"
 version = "0.1.0"
 edition = "2024"
 
+[build-dependencies]
+vergen-gitcl = { version = "9.1.0", features = ["build", "cargo"] }
+
 [profile.release]
 strip = true
 lto = "thin"
@@ -25,7 +28,7 @@ sha2 = "0.10.9"
 hex = "0.4.3"
 tracing = "0.1.43"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
-songbird = { git = "https://github.com/beerpsi-forks/songbird", rev = "25195877c715e08df25eda668df6b3a6bb3d3cdf", features = [
+songbird = { git = "https://github.com/serenity-rs/songbird", branch = "next", features = [
   "builtin-queue",
 ] }
 poise = "0.6.1"
