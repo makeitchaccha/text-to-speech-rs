@@ -14,6 +14,19 @@ pub struct VoicePackage {
     pub detail: VoiceDetail,
 }
 
+impl VoicePackage {
+    fn matches_keywords(&self, keywords: &[&str]) -> bool {
+        let mut package_keywords = vec![
+            self.detail.name.as_str(),
+            self.detail.provider.as_str(),
+        ];
+        if let Some(description) = self.detail.description.as_ref() {
+            package_keywords.push(description);
+        }
+        keywords.iter().all(|keyword| package_keywords.iter().any(|package_keyword| package_keyword.contains(keyword)))
+    }
+}
+
 #[derive(Clone)]
 pub struct VoicePackageRegistry {
     packages: Arc<HashMap<String, VoicePackage>>,
@@ -44,6 +57,13 @@ impl VoicePackageRegistry {
             .iter()
             .filter(move |&(_, package)| package.detail.name.starts_with(prefix))
             .map(|(id, voice)| (id.as_str(), voice))
+    }
+
+    pub fn find_matching_keywords(&self, keywords: &[&str]) -> impl Iterator<Item = (&str, &VoicePackage)> {
+         self.packages
+            .iter()
+            .filter(|&(_, package)| package.matches_keywords(keywords))
+            .map(|(id, package)| (id.as_str(), package))
     }
 }
 

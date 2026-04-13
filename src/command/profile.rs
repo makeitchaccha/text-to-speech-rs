@@ -86,7 +86,9 @@ async fn autocomplete_voice_name(
     ctx: Context<'_>,
     partial: &str,
 ) -> impl Iterator<Item = AutocompleteChoice> {
-    let candidates = ctx.data().registry.find_prefixed_all(partial);
+    let keywords: Vec<&str> = partial.split_ascii_whitespace().filter(|s| *s != "|").collect();
+    let candidates = ctx.data().registry.find_matching_keywords(keywords.as_ref());
+
     candidates.map(|(id, package)| {
         AutocompleteChoice::new(
             match package.detail.description.as_ref() {
@@ -98,7 +100,7 @@ async fn autocomplete_voice_name(
             },
             id,
         )
-    })
+    }).collect::<Vec<_>>().into_iter()
 }
 
 async fn common_choose(ctx: Context<'_>, scope: Scope, name: String) -> Result<()> {
