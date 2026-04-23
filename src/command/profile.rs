@@ -1,6 +1,9 @@
 use crate::command::{Context, Result};
 use anyhow::anyhow;
-use poise::serenity_prelude::AutocompleteChoice;
+use poise::{
+    CreateReply,
+    serenity_prelude::{AutocompleteChoice, CreateEmbed},
+};
 use std::fmt::{Display, Formatter};
 
 /// Setting commands for user
@@ -111,9 +114,9 @@ async fn autocomplete_voice_name(
 }
 
 async fn common_choose(ctx: Context<'_>, scope: Scope, name: String) -> Result<()> {
-    if ctx.data().registry.get_voice(name.as_str()).is_none() {
+    let Some(voice) = ctx.data().registry.get(name.as_str()) else {
         return Err(anyhow::anyhow!(format!("voice {} not found", name)));
-    }
+    };
 
     match scope {
         Scope::User => {
@@ -130,8 +133,45 @@ async fn common_choose(ctx: Context<'_>, scope: Scope, name: String) -> Result<(
         }
     }
 
-    ctx.say(format!("{} was chosen for {} voice.", name, scope))
-        .await?;
+    let discord_locales = &ctx.data().discord_locales;
+    let locale = ctx.locale().expect("must be some when slash command");
+    let attr_description = match scope {
+        Scope::User => "description-user",
+        Scope::Guild => "description-guild",
+    };
+    ctx.send(
+        CreateReply::default().embed(
+            CreateEmbed::new()
+                .title(discord_locales.resolve(locale, "voice-choose-response", None, None)?)
+                .description(discord_locales.resolve(
+                    locale,
+                    "voice-choose-response",
+                    Some(attr_description),
+                    None,
+                )?)
+                .field(
+                    discord_locales.resolve(
+                        locale,
+                        "voice-choose-response",
+                        Some("provider"),
+                        None,
+                    )?,
+                    voice.detail.provider.as_str(),
+                    true,
+                )
+                .field(
+                    discord_locales.resolve(
+                        locale,
+                        "voice-choose-response",
+                        Some("voice"),
+                        None,
+                    )?,
+                    voice.detail.name.as_str(),
+                    true,
+                ),
+        ),
+    )
+    .await?;
 
     Ok(())
 }
@@ -149,8 +189,25 @@ async fn common_clear(ctx: Context<'_>, scope: Scope) -> Result<()> {
         }
     }
 
-    ctx.say(format!("voice was cleared for {} voice.", scope))
-        .await?;
+    let discord_locales = &ctx.data().discord_locales;
+    let locale = ctx.locale().expect("must be some when slash command");
+    let attr_description = match scope {
+        Scope::User => "description-user",
+        Scope::Guild => "description-guild",
+    };
+    ctx.send(
+        CreateReply::default().embed(
+            CreateEmbed::new()
+                .title(discord_locales.resolve(locale, "voice-clear-response", None, None)?)
+                .description(discord_locales.resolve(
+                    locale,
+                    "voice-clear-response",
+                    Some(attr_description),
+                    None,
+                )?),
+        ),
+    )
+    .await?;
 
     Ok(())
 }
